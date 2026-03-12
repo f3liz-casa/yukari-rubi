@@ -1,25 +1,26 @@
 {
-  "name": "ts-template-functional",
-  "version": "0.0.1",
-  "description": "",
-  "license": "CC0-1.0",
-  "author": "",
+  "name": "yukari-rubi",
+  "version": "0.1.0",
+  "description": "Add furigana reading aids to Japanese text on web pages",
+  "license": "Apache-2.0",
+  "author": "f3liz-dev",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "dependencies": {
-    "neverthrow": "^8.2.0",
-    "remeda": "^2.33.6",
-    "valibot": "^1.2.0"
+    "build": "node scripts/build.mjs",
+    "dev": "npm run build && npx web-ext run --config web-ext.config.mjs",
+    "lint": "oxlint",
+    "fmt": "oxfmt --write src/",
+    "package": "npm run build && npx web-ext build --config web-ext.config.mjs"
   },
   "devDependencies": {
+    "esbuild": "^0.25.0",
     "eslint": "^10.0.2",
     "eslint-plugin-functional": "^9.0.4",
     "eslint-plugin-oxlint": "^1.51.0",
     "oxfmt": "^0.36.0",
     "oxlint": "^1.51.0",
     "oxlint-tsgolint": "^0.16.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "web-ext": "^8.4.0"
   }
 }

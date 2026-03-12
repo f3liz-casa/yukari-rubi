@@ -1,0 +1,10 @@
+.yukari-rubi ruby {
+  ruby-align: center;
+}
+
+.yukari-rubi rt {
+  font-size: 0.5em;
+  color: inherit;
+  opacity: 0.8;
+  user-select: none;
+}

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        width: 240px;
+        padding: 12px;
+        font-family: system-ui, sans-serif;
+        font-size: 14px;
+        margin: 0;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 12px 0;
+      }
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ccc;
+      }
+      .status-dot.active {
+        background: #22c55e;
+      }
+      button {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background: #f9fafb;
+        cursor: pointer;
+        margin-bottom: 8px;
+      }
+      button:hover {
+        background: #e5e7eb;
+      }
+      button:active {
+        background: #d1d5db;
+      }
+      .settings {
+        border-top: 1px solid #e5e7eb;
+        padding-top: 8px;
+        margin-top: 4px;
+      }
+      label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .shortcut {
+        font-size: 11px;
+        color: #6b7280;
+        margin-top: 8px;
+        text-align: center;
+      }
+      kbd {
+        background: #e5e7eb;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-family: monospace;
+      }
+      .error {
+        color: #dc2626;
+        font-size: 12px;
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ゆかり ルビ</h1>
+    <div class="status">
+      <span class="status-dot" id="dot"></span>
+      <span id="status-text">Inactive</span>
+    </div>
+    <button id="toggle-btn">Enable Furigana</button>
+    <div class="settings">
+      <label>
+        <input type="checkbox" id="mutation-cb" />
+        Watch for new content
+      </label>
+    </div>
+    <div class="shortcut">
+      Shortcut: <kbd>Alt</kbd>+<kbd>F</kbd>
+    </div>
+    <div class="error" id="error" hidden></div>
+    <script src="popup.js"></script>
+  </body>
+</html>
