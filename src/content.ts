@@ -1,5 +1,8 @@
+import Browser from "webextension-polyfill"
+import { createBirpc } from "birpc"
 import { alignFurigana, containsKanji } from "./lib/furigana"
-import type { Morpheme, TokenizeResponse, SettingsResponse } from "./types"
+import type { Morpheme } from "./types"
+import type { BackgroundRPC } from "./rpc"
 
 const PROCESSED_ATTR = "data-yukari"
 const CONTAINER_CLASS = "yukari-rubi"
@@ -33,33 +36,41 @@ let active = false
 let observer: MutationObserver | null = null
 let processing = false
 
+// --- Set up birpc client ---
+
+// For browser extensions, responses come back via sendMessage promise,
+// but birpc expects them via the on() callback. We need to bridge this.
+let onMessageCallback: ((data: any) => void) | null = null
+
+const bg = createBirpc<BackgroundRPC>({}, {
+  post: async (data) => {
+    console.log("[yukari-rubi] Content sending birpc message:", data)
+    const response = await Browser.runtime.sendMessage(data)
+    console.log("[yukari-rubi] Content received birpc response:", response)
+    // Feed the response back into birpc via the on() callback
+    if (response && onMessageCallback) {
+      onMessageCallback(response)
+    }
+    return response
+  },
+  on: (fn) => {
+    onMessageCallback = fn
+    Browser.runtime.onMessage.addListener((message) => {
+      // Check if this is a birpc message by looking for the type field
+      if (message && typeof message === 'object' && message.t) {
+        console.log("[yukari-rubi] Content received birpc message:", message)
+        fn(message)
+      }
+    })
+  },
+  serialize: (v) => v,
+  deserialize: (v) => v,
+})
+
 // --- Tokenization via background ---
 
-async function sendMessageWithRetry(message: any, retries = 5, delay = 500): Promise<any> {
-  // oxlint-disable-next-line fp/no-loop-statements
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await browser.runtime.sendMessage(message)
-    } catch (err) {
-      if (
-        i < retries - 1 &&
-        (err instanceof Error && err.message.includes("Could not establish connection"))
-      ) {
-        console.warn(`[yukari-rubi] Connection failed, retrying (${i + 1}/${retries})...`)
-        await new Promise((r) => setTimeout(r, delay))
-        continue
-      }
-      throw err
-    }
-  }
-}
-
 async function tokenize(text: string): Promise<readonly Morpheme[]> {
-  const response: TokenizeResponse = await sendMessageWithRetry({
-    type: "tokenize",
-    text,
-    mode: "A",
-  })
+  const response = await bg.tokenize(text, "A")
   if (response.error) throw new Error(response.error)
   return response.morphemes ?? []
 }
@@ -72,14 +83,37 @@ function shouldSkipElement(el: Element): boolean {
 
 function collectTextNodes(root: Node): Text[] {
   const nodes: Text[] = []
+  let skippedRuby = 0
+  let skippedProcessed = 0
+  let skippedNoKanji = 0
+  let skippedOther = 0
+  
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node: Node): number {
       const parent = node.parentElement
-      if (!parent) return NodeFilter.FILTER_SKIP
-      if (parent.closest(`.${CONTAINER_CLASS}`)) return NodeFilter.FILTER_REJECT
-      if (parent.hasAttribute(PROCESSED_ATTR)) return NodeFilter.FILTER_REJECT
-      if (shouldSkipElement(parent)) return NodeFilter.FILTER_REJECT
-      if (!node.textContent || !containsKanji(node.textContent)) return NodeFilter.FILTER_SKIP
+      if (!parent) {
+        skippedOther++
+        return NodeFilter.FILTER_SKIP
+      }
+      if (parent.closest(`.${CONTAINER_CLASS}`)) {
+        return NodeFilter.FILTER_REJECT
+      }
+      if (parent.hasAttribute(PROCESSED_ATTR)) {
+        skippedProcessed++
+        return NodeFilter.FILTER_REJECT
+      }
+      if (shouldSkipElement(parent)) {
+        if (parent.tagName === "RUBY" || parent.closest("ruby")) {
+          skippedRuby++
+        } else {
+          skippedOther++
+        }
+        return NodeFilter.FILTER_REJECT
+      }
+      if (!node.textContent || !containsKanji(node.textContent)) {
+        skippedNoKanji++
+        return NodeFilter.FILTER_SKIP
+      }
       return NodeFilter.FILTER_ACCEPT
     },
   })
@@ -90,18 +124,54 @@ function collectTextNodes(root: Node): Text[] {
     nodes.push(current as Text)
     current = walker.nextNode()
   }
+  console.log(`[yukari-rubi] Found ${nodes.length} text nodes to process`)
+  console.log(`[yukari-rubi] Skipped: ${skippedRuby} in ruby tags, ${skippedProcessed} already processed, ${skippedNoKanji} without kanji, ${skippedOther} other`)
   return nodes
+}
+
+// --- Font metrics utilities ---
+
+function getActualTextBounds(element: HTMLElement): {
+  fontAscent: number
+  actualAscent: number
+  fontSize: number
+} {
+  const style = window.getComputedStyle(element)
+  const fontSize = parseFloat(style.fontSize)
+
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    return { fontAscent: fontSize * 0.8, actualAscent: fontSize * 0.7, fontSize }
+  }
+
+  ctx.font = `${style.fontStyle} ${style.fontWeight} ${fontSize}px ${style.fontFamily}`
+  const metrics = ctx.measureText('字')
+
+  return {
+    fontAscent: metrics.fontBoundingBoxAscent ?? fontSize * 0.8,
+    actualAscent: metrics.actualBoundingBoxAscent,
+    fontSize,
+  }
 }
 
 // --- Ruby element creation ---
 
 function createRubyFragment(
   segments: readonly import("./lib/furigana").FuriganaSegment[],
+  parentElement: HTMLElement,
 ): DocumentFragment {
   const frag = document.createDocumentFragment()
+  
   for (const seg of segments) {
     if (seg.type === "kanji") {
       const ruby = document.createElement("ruby")
+      
+      // Get ACTUAL rendered bounds of this specific kanji text
+      const { fontAscent, actualAscent, fontSize } = getActualTextBounds(parentElement)
+      const gap = fontAscent - actualAscent - fontSize * 0.1
+      ruby.style.setProperty('--ruby-adjustment', `${Math.max(gap, 0)}px`)
+      console.log(`[yukari-rubi] fontSize: ${fontSize}px, actualAscent: ${actualAscent.toFixed(1)}px, adjustment: ${gap.toFixed(1)}px`)
       ruby.appendChild(document.createTextNode(seg.text))
       const rt = document.createElement("rt")
       rt.textContent = seg.reading
@@ -121,7 +191,9 @@ async function processTextNode(textNode: Text): Promise<void> {
   if (!text || !containsKanji(text)) return
   if (!textNode.parentNode || !textNode.isConnected) return
 
+  console.log(`[yukari-rubi] Processing text node: "${text.substring(0, 50)}${text.length > 50 ? "..." : ""}"`)
   const morphemes = await tokenize(text)
+  console.log(`[yukari-rubi] Tokenized into ${morphemes.length} morphemes`)
 
   // Re-check state and node after async call
   if (!active || !textNode.parentNode || !textNode.isConnected) return
@@ -130,10 +202,12 @@ async function processTextNode(textNode: Text): Promise<void> {
   container.className = CONTAINER_CLASS
   container.setAttribute(PROCESSED_ATTR, text)
 
+  const parent = textNode.parentElement || document.body
+
   for (const m of morphemes) {
     const segments = alignFurigana(m.surface, m.readingForm)
     if (segments) {
-      container.appendChild(createRubyFragment(segments))
+      container.appendChild(createRubyFragment(segments, parent))
     } else {
       container.appendChild(document.createTextNode(m.surface))
     }
@@ -141,7 +215,11 @@ async function processTextNode(textNode: Text): Promise<void> {
 
   // Double check parent one last time before replacing
   if (textNode.parentNode) {
+    const parent = textNode.parentNode as Element
+    console.log(`[yukari-rubi] Replacing text node in <${parent.nodeName}> with ${morphemes.length} morphemes`)
     textNode.parentNode.replaceChild(container, textNode)
+  } else {
+    console.warn("[yukari-rubi] Text node lost parent before replacement")
   }
 }
 
@@ -209,17 +287,23 @@ function stopObserver(): void {
 // --- Activate / Deactivate ---
 
 async function activate(): Promise<void> {
+  console.log("[yukari-rubi] Activating furigana on page:", location.href)
   active = true
   if (processing) return
   processing = true
   try {
+    // Ensure background script is ready before processing
+    console.log("[yukari-rubi] Preloading background script...")
+    await bg.preload()
+    console.log("[yukari-rubi] Processing document body...")
     await processRoot(document.body)
-    const settings: SettingsResponse = await sendMessageWithRetry({
-      type: "getSettings",
-    })
+    const settings = await bg.getSettings()
+    console.log("[yukari-rubi] Settings:", settings)
     if (settings.mutationObserver) {
+      console.log("[yukari-rubi] Starting mutation observer...")
       startObserver()
     }
+    console.log("[yukari-rubi] Activation complete")
   } catch (err) {
     // DeadObject errors in Firefox occur when interacting with destroyed context
     if (err instanceof Error && err.message.includes("DeadObject")) {
@@ -232,6 +316,7 @@ async function activate(): Promise<void> {
 }
 
 function deactivate(): void {
+  console.log("[yukari-rubi] Deactivating furigana")
   active = false
   stopObserver()
   removeAnnotations()
@@ -247,7 +332,10 @@ async function toggle(): Promise<void> {
 
 // --- Message listener ---
 
-browser.runtime.onMessage.addListener((message: { type: string }): Promise<unknown> | undefined => {
+Browser.runtime.onMessage.addListener((message: { type?: string; $birpc?: any }): Promise<unknown> | undefined => {
+  // Skip birpc messages (handled by birpc client)
+  if (message.$birpc) return undefined
+
   if (message.type === "toggle") {
     void toggle()
     return undefined

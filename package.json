@@ -7,13 +7,17 @@
   "type": "module",
   "scripts": {
     "fetch-dict": "./fetch_dictionary.sh",
-    "build:dic-converter": "cargo build --bin dic_converter --release --manifest-path sudachi-wasm/Cargo.toml",
-    "build:wasm": "wasm-pack build --target web --out-dir wasm/pkg sudachi-wasm/ --release",
-    "build": "npm run build:wasm && node scripts/build.mjs",
+    "build": "node scripts/build.mjs",
     "dev": "npm run build && npx web-ext run --config web-ext.config.mjs",
     "lint": "oxlint",
     "fmt": "oxfmt --write src/",
     "package": "npm run fetch-dict && npm run build && npx web-ext build --config web-ext.config.mjs"
+  },
+  "dependencies": {
+    "@chenglou/pretext": "^0.0.4",
+    "@f3liz/sudachi-wasm": "^0.1.7",
+    "birpc": "^4.0.0",
+    "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

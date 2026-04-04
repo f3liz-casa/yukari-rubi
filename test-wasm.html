@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test Sudachi WASM</title>
+</head>
+<body>
+    <h1>Sudachi WASM Test</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        import init, { loadDictionary, tokenize } from './node_modules/@f3liz/sudachi-wasm/pkg/sudachi_wasm.js';
+        
+        const output = document.getElementById('output');
+        
+        async function test() {
+            try {
+                output.innerHTML += '<p>Initializing WASM...</p>';
+                await init('./node_modules/@f3liz/sudachi-wasm/pkg/sudachi_wasm_bg.wasm');
+                
+                output.innerHTML += '<p>Loading dictionary...</p>';
+                const resp = await fetch('./dict/system_core.xdic');
+                const dictBytes = new Uint8Array(await resp.arrayBuffer());
+                const handle = loadDictionary(dictBytes);
+                
+                output.innerHTML += '<p>Dictionary loaded! Handle: ' + handle + '</p>';
+                
+                output.innerHTML += '<p>Tokenizing "食べ物"...</p>';
+                const results = tokenize(handle, '食べ物', 0);
+                
+                output.innerHTML += '<p>Results type: ' + typeof results + '</p>';
+                output.innerHTML += '<p>Results length: ' + results.length + '</p>';
+                
+                results.forEach((token, i) => {
+                    output.innerHTML += '<hr>';
+                    output.innerHTML += '<p>Token ' + i + ':</p>';
+                    output.innerHTML += '<pre>' + JSON.stringify({
+                        surface: token.surface,
+                        reading: token.reading,
+                        pos: token.pos,
+                        type: typeof token,
+                        constructor: token.constructor.name,
+                        keys: Object.keys(token),
+                        allProps: Object.getOwnPropertyNames(token)
+                    }, null, 2) + '</pre>';
+                });
+                
+            } catch (err) {
+                output.innerHTML += '<p style="color: red;">Error: ' + err.message + '</p>';
+                output.innerHTML += '<pre>' + err.stack + '</pre>';
+            }
+        }
+        
+        test();
+    </script>
+</body>
+</html>

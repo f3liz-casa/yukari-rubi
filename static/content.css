@@ -1,5 +1,6 @@
 .yukari-rubi ruby {
   ruby-align: center;
+  ruby-position: over;
 }
 
 .yukari-rubi rt {
@@ -7,4 +8,7 @@
   color: inherit;
   opacity: 0.8;
   user-select: none;
+  /* Adaptive positioning based on font's actual rendered height */
+  /* Compensates for different vertical metrics in JP vs KR fonts */
+  margin-bottom: calc(-1 * var(--ruby-adjustment, 0px));
 }

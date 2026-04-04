@@ -1,28 +1,15 @@
 #!/bin/sh
 set -e
 
-DICT_VERSION=${1:-"latest"}
-DICT_TYPE=${2:-"core"}
+DICT_URL="https://github.com/f3liz-dev/sudachi.rs/releases/download/v0.1.7/system_core.xdic"
 
-DICT_NAME="sudachi-dictionary-${DICT_VERSION}-${DICT_TYPE}"
-
-echo "Downloading a dictionary file \`${DICT_NAME}\` ..."
+echo "Downloading dictionary file from ${DICT_URL}..."
 echo
 
-curl -L \
-    https://d2ej7fkh96fzlu.cloudfront.net/sudachidict/${DICT_NAME}.zip \
-    > ${DICT_NAME}.zip
+# Create dict directory if it doesn't exist
+mkdir -p dict
 
-unzip -j ${DICT_NAME}.zip "*/system_${DICT_TYPE}.dic" -d .
-rm -f ${DICT_NAME}.zip
-
-# Build dic_converter if not exists
-if [ ! -f ./target/release/dic_converter ]; then
-    echo "Building dic_converter..."
-    cargo build --bin dic_converter --release --manifest-path sudachi-wasm/Cargo.toml
-fi
-
-mv "system_${DICT_TYPE}.dic" "dict/system_core.dic"
+curl -L "${DICT_URL}" -o "dict/system_core.xdic"
 
 echo
-echo "Placed a compressed dictionary file to \`dict/system_core.dic\` ."
+echo "Placed dictionary file to \`dict/system_core.xdic\` ."

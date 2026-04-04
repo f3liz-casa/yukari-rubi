@@ -2,5 +2,7 @@
 /dist/
 /artifacts/
 *.dic
+*.xdic
 /dict/
 /target/
+sudachi-wasm/

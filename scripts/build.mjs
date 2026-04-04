@@ -7,8 +7,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 const dist = join(root, "dist");
 const staticDir = join(root, "static");
-const sudachiPkg = join(root, "sudachi-wasm", "wasm", "pkg");
-const sudachiDict = join(root, "dict", "system_core.dic");
+const sudachiPkg = join(root, "node_modules", "@f3liz", "sudachi-wasm", "pkg");
+const sudachiDict = join(root, "dict", "system_core.xdic");
 
 // Clean
 if (existsSync(dist)) rmSync(dist, { recursive: true });
@@ -27,6 +27,16 @@ await build({
   logLevel: "info",
 });
 
+// Bundle background script (ESM — loaded by background.html)
+await build({
+  entryPoints: [join(root, "src", "background.ts")],
+  bundle: true,
+  outfile: join(dist, "background.js"),
+  format: "esm",
+  target: ["firefox115"],
+  logLevel: "info",
+});
+
 // Bundle popup script (IIFE — runs in popup context)
 await build({
   entryPoints: [join(root, "src", "popup.ts")],
@@ -41,7 +51,6 @@ await build({
 for (const file of [
   "manifest.json",
   "background.html",
-  "background.js",
   "popup.html",
   "content.css",
 ]) {
@@ -59,20 +68,20 @@ if (existsSync(sudachiPkg)) {
       cpSync(src, join(dist, "wasm", file));
     }
   }
-  console.log("✅ Copied WASM files from sudachi-wasm");
+  console.log("✅ Copied WASM files from @f3liz/sudachi-wasm");
 } else {
-  console.warn("⚠️  sudachi-wasm browser pkg not found at:", sudachiPkg);
+  console.warn("⚠️  @f3liz/sudachi-wasm not found at:", sudachiPkg);
 }
 
 // Copy dictionary (large file, only if present)
 if (existsSync(sudachiDict)) {
-  cpSync(sudachiDict, join(dist, "dict", "system_core.dic"));
-  console.log("✅ Copied dictionary (system_core.dic)");
+  cpSync(sudachiDict, join(dist, "dict", "system_core.xdic"));
+  console.log("✅ Copied dictionary (system_core.xdic)");
 } else {
   console.warn(
     "⚠️  Dictionary not found at:",
     sudachiDict,
-    "\n   Place system_core.dic in dist/dict/ before running the extension.",
+    "\n   Run 'npm run fetch-dict' to download system_core.xdic.",
   );
 }
 
