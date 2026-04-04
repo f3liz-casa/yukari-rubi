@@ -31,8 +31,11 @@
   "web_accessible_resources": ["wasm/*", "dict/*"],
   "browser_specific_settings": {
     "gecko": {
-      "id": "yukari-rubi@f3liz-dev",
-      "strict_min_version": "115.0"
+      "id": "yukari-rubi@f3liz.casa",
+      "strict_min_version": "115.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   }
 }
