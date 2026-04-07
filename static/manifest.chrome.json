@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Yukari Rubi",
+  "version": "0.1.0",
+  "description": "Add furigana reading aids to Japanese text on web pages using Sudachi morphological analysis",
+  "permissions": ["storage"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Yukari Rubi"
+  },
+  "commands": {
+    "toggle-furigana": {
+      "suggested_key": {
+        "default": "Alt+F"
+      },
+      "description": "Toggle furigana on the current page"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["wasm/*", "dict/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

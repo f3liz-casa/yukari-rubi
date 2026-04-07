@@ -8,10 +8,13 @@
   "scripts": {
     "fetch-dict": "./fetch_dictionary.sh",
     "build": "node scripts/build.mjs",
+    "build:chrome": "node scripts/build.mjs --chrome",
     "dev": "npm run build && npx web-ext run --config web-ext.config.mjs",
+    "dev:chrome": "npm run build:chrome && npx web-ext run --source-dir dist-chrome --target chromium",
     "lint": "oxlint",
     "fmt": "oxfmt --write src/",
-    "package": "npm run fetch-dict && npm run build && npx web-ext build --config web-ext.config.mjs"
+    "package": "npm run fetch-dict && npm run build && npx web-ext build --config web-ext.config.mjs",
+    "package:chrome": "npm run fetch-dict && npm run build:chrome && npx web-ext build --source-dir dist-chrome --artifacts-dir artifacts"
   },
   "dependencies": {
     "@chenglou/pretext": "^0.0.4",

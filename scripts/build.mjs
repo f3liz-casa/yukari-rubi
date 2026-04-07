@@ -5,10 +5,12 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const dist = join(root, "dist");
+const isChrome = process.argv.includes("--chrome");
+const dist = join(root, isChrome ? "dist-chrome" : "dist");
 const staticDir = join(root, "static");
 const sudachiPkg = join(root, "node_modules", "@f3liz", "sudachi-wasm", "pkg");
 const sudachiDict = join(root, "dict", "system_core.xdic");
+const target = isChrome ? ["chrome116"] : ["firefox115"];
 
 // Clean
 if (existsSync(dist)) rmSync(dist, { recursive: true });
@@ -23,17 +25,17 @@ await build({
   bundle: true,
   outfile: join(dist, "content.js"),
   format: "iife",
-  target: ["firefox115"],
+  target,
   logLevel: "info",
 });
 
-// Bundle background script (ESM — loaded by background.html)
+// Bundle background script (ESM — loaded as service worker / background.html)
 await build({
   entryPoints: [join(root, "src", "background.ts")],
   bundle: true,
   outfile: join(dist, "background.js"),
   format: "esm",
-  target: ["firefox115"],
+  target,
   logLevel: "info",
 });
 
@@ -43,22 +45,28 @@ await build({
   bundle: true,
   outfile: join(dist, "popup.js"),
   format: "iife",
-  target: ["firefox115"],
+  target,
   logLevel: "info",
 });
 
 // Copy static files
-for (const file of [
-  "manifest.json",
-  "background.html",
-  "popup.html",
-  "content.css",
-]) {
+const staticFiles = isChrome
+  ? ["popup.html", "content.css"]
+  : ["background.html", "popup.html", "content.css"];
+
+for (const file of staticFiles) {
   const src = join(staticDir, file);
   if (existsSync(src)) {
     cpSync(src, join(dist, file));
   }
 }
+
+// Copy manifest
+const manifestSrc = join(
+  staticDir,
+  isChrome ? "manifest.chrome.json" : "manifest.json",
+);
+cpSync(manifestSrc, join(dist, "manifest.json"));
 
 // Copy WASM files
 if (existsSync(sudachiPkg)) {
@@ -85,5 +93,9 @@ if (existsSync(sudachiDict)) {
   );
 }
 
-console.log("\n🎉 Build complete!");
-console.log("   Run:  npx web-ext run -s dist");
+console.log(`\n🎉 Build complete! (${isChrome ? "Chrome/Chromium" : "Firefox"})`);
+if (isChrome) {
+  console.log("   Run:  npx web-ext run -s dist-chrome --target chromium");
+} else {
+  console.log("   Run:  npx web-ext run -s dist");
+}
