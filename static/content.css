@@ -4,7 +4,7 @@
 }
 
 .yukari-rubi rt {
-  font-size: 0.5em;
+  font-size: calc(var(--yukari-ruby-size, 50) * 0.01em);
   color: inherit;
   opacity: 0.8;
   user-select: none;

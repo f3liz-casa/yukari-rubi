@@ -112,10 +112,12 @@ async function ensureTokenizer(): Promise<number> {
 // --- Default settings ---
 
 Browser.runtime.onInstalled.addListener(() => {
-  Browser.storage.local.get(["mutationObserver"]).then((current) => {
-    if (current.mutationObserver === undefined) {
-      Browser.storage.local.set({ mutationObserver: false })
-    }
+  Browser.storage.local.get(["mutationObserver", "rubySize", "autoEnablePatterns"]).then((current) => {
+    const defaults: Record<string, unknown> = {}
+    if (current.mutationObserver === undefined) defaults.mutationObserver = false
+    if (current.rubySize === undefined) defaults.rubySize = 50
+    if (current.autoEnablePatterns === undefined) defaults.autoEnablePatterns = []
+    if (Object.keys(defaults).length > 0) Browser.storage.local.set(defaults)
   })
 })
 
@@ -154,10 +156,10 @@ const rpcMethods: BackgroundRPC = {
   },
 
   async getSettings() {
-    return await Browser.storage.local.get(["mutationObserver"])
+    return await Browser.storage.local.get(["mutationObserver", "rubySize", "autoEnablePatterns"])
   },
 
-  async setSettings(settings: { mutationObserver?: boolean }) {
+  async setSettings(settings: { mutationObserver?: boolean; rubySize?: number; autoEnablePatterns?: string[] }) {
     await Browser.storage.local.set(settings)
     return { ok: true }
   },

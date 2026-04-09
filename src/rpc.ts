@@ -6,8 +6,8 @@ export interface BackgroundRPC {
     morphemes?: readonly Morpheme[]
     error?: string
   }>
-  getSettings(): Promise<{ mutationObserver?: boolean }>
-  setSettings(settings: { mutationObserver?: boolean }): Promise<{ ok: boolean }>
+  getSettings(): Promise<{ mutationObserver?: boolean; rubySize?: number; autoEnablePatterns?: string[] }>
+  setSettings(settings: { mutationObserver?: boolean; rubySize?: number; autoEnablePatterns?: string[] }): Promise<{ ok: boolean }>
   preload(): Promise<{ ready: boolean; error?: string }>
 }
 

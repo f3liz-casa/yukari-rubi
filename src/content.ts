@@ -36,6 +36,18 @@ let active = false
 let observer: MutationObserver | null = null
 let processing = false
 
+// --- Glob pattern matching for URLs ---
+
+function globToRegExp(pattern: string): RegExp {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+  const withWildcards = escaped.replace(/\*\*/g, '\x00').replace(/\*/g, '[^/]*').replace(/\x00/g, '.*')
+  return new RegExp(`^${withWildcards}$`)
+}
+
+function urlMatchesPatterns(url: string, patterns: string[]): boolean {
+  return patterns.some((p) => globToRegExp(p).test(url))
+}
+
 // --- Set up birpc client ---
 
 // For browser extensions, responses come back via sendMessage promise,
@@ -299,6 +311,8 @@ async function activate(): Promise<void> {
     await processRoot(document.body)
     const settings = await bg.getSettings()
     console.log("[yukari-rubi] Settings:", settings)
+    const rubySize = settings.rubySize ?? 50
+    document.documentElement.style.setProperty('--yukari-ruby-size', String(rubySize))
     if (settings.mutationObserver) {
       console.log("[yukari-rubi] Starting mutation observer...")
       startObserver()
@@ -330,6 +344,14 @@ async function toggle(): Promise<void> {
   }
 }
 
+// --- Live update ruby size on storage change ---
+
+Browser.storage.onChanged.addListener((changes) => {
+  if (changes.rubySize?.newValue !== undefined) {
+    document.documentElement.style.setProperty('--yukari-ruby-size', String(changes.rubySize.newValue))
+  }
+})
+
 // --- Message listener ---
 
 Browser.runtime.onMessage.addListener((message: { type?: string; $birpc?: any }): Promise<unknown> | undefined => {
@@ -352,4 +374,14 @@ Browser.runtime.onMessage.addListener((message: { type?: string; $birpc?: any })
     return Promise.resolve({ active })
   }
   return undefined
+})
+
+// --- Auto-enable on matching URLs ---
+
+Browser.storage.local.get(["autoEnablePatterns"]).then((result) => {
+  const patterns: string[] = result.autoEnablePatterns ?? []
+  if (patterns.length > 0 && urlMatchesPatterns(location.href, patterns)) {
+    console.log("[yukari-rubi] URL matches auto-enable pattern, activating...")
+    void activate()
+  }
 })

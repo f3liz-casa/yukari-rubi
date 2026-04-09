@@ -70,6 +70,102 @@
         font-size: 11px;
         font-family: monospace;
       }
+      .size-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .size-control span.label {
+        font-size: 13px;
+        flex-shrink: 0;
+      }
+      .size-control button {
+        width: 32px;
+        padding: 4px 0;
+        margin-bottom: 0;
+        font-size: 16px;
+        line-height: 1;
+      }
+      .size-control .size-value {
+        font-size: 13px;
+        min-width: 36px;
+        text-align: center;
+      }
+      .size-warning {
+        color: #d97706;
+        font-size: 11px;
+        margin-top: 4px;
+      }
+      .auto-enable {
+        border-top: 1px solid #e5e7eb;
+        padding-top: 8px;
+        margin-top: 8px;
+      }
+      .auto-enable h2 {
+        font-size: 13px;
+        margin: 0 0 6px 0;
+        font-weight: 600;
+      }
+      .auto-enable .add-row {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 4px;
+      }
+      .auto-enable input[type="text"] {
+        flex: 1;
+        padding: 4px 6px;
+        font-size: 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        min-width: 0;
+      }
+      .auto-enable .add-row button {
+        width: auto;
+        padding: 4px 8px;
+        font-size: 12px;
+        margin-bottom: 0;
+        flex-shrink: 0;
+      }
+      .auto-enable .add-site-btn {
+        width: 100%;
+        padding: 4px 8px;
+        font-size: 12px;
+        margin-bottom: 4px;
+      }
+      .pattern-list {
+        max-height: 120px;
+        overflow-y: auto;
+      }
+      .pattern-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px;
+        padding: 3px 0;
+        font-size: 11px;
+        border-bottom: 1px solid #f3f4f6;
+      }
+      .pattern-item span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+      }
+      .pattern-item button {
+        width: auto;
+        padding: 1px 6px;
+        font-size: 11px;
+        margin-bottom: 0;
+        color: #dc2626;
+        border-color: #fecaca;
+        flex-shrink: 0;
+      }
+      .pattern-hint {
+        font-size: 10px;
+        color: #9ca3af;
+        margin-top: 2px;
+      }
       .error {
         color: #dc2626;
         font-size: 12px;
@@ -89,6 +185,25 @@
         <input type="checkbox" id="mutation-cb" />
         Watch for new content
       </label>
+      <div class="size-control">
+        <span class="label">ルビサイズ</span>
+        <button id="size-dec">−</button>
+        <span class="size-value" id="size-value">50%</span>
+        <button id="size-inc">＋</button>
+      </div>
+      <div class="size-warning" id="size-warning" hidden>
+        大きいサイズはレイアウトが崩れる場合があります
+      </div>
+    </div>
+    <div class="auto-enable">
+      <h2>自動有効化サイト</h2>
+      <button class="add-site-btn" id="add-current-site">このサイトを追加</button>
+      <div class="add-row">
+        <input type="text" id="pattern-input" placeholder="*://example.com/*" />
+        <button id="add-pattern-btn">追加</button>
+      </div>
+      <div class="pattern-list" id="pattern-list"></div>
+      <div class="pattern-hint">* = 任意の文字列、** = パス全体</div>
     </div>
     <div class="shortcut">
       Shortcut: <kbd>Alt</kbd>+<kbd>F</kbd>

@@ -3,7 +3,7 @@
   "name": "Yukari Rubi",
   "version": "0.1.0",
   "description": "Add furigana reading aids to Japanese text on web pages using Sudachi morphological analysis",
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
