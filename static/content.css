@@ -1,3 +1,7 @@
+.yukari-rubi {
+  line-height: calc(1 + var(--yukari-ruby-size, 50) * 0.02);
+}
+
 .yukari-rubi ruby {
   ruby-align: center;
   ruby-position: over;
