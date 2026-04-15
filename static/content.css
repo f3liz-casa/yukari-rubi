@@ -16,3 +16,18 @@
   /* Compensates for different vertical metrics in JP vs KR fonts */
   margin-bottom: calc(-1 * var(--ruby-adjustment, 0px));
 }
+
+/* Scrapbox path: we wrap char-index spans in real <ruby> elements so the
+   browser handles base widening and collision avoidance. No absolute
+   positioning, no JS-side scaling. */
+ruby.yukari-scrapbox-ruby {
+  ruby-position: over;
+  ruby-align: center;
+}
+
+ruby.yukari-scrapbox-ruby > rt {
+  font-size: calc(var(--yukari-ruby-size, 50) * 0.01em);
+  color: inherit;
+  opacity: 0.8;
+  user-select: none;
+}

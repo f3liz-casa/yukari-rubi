@@ -7,6 +7,19 @@ import type { BackgroundRPC } from "./rpc"
 const PROCESSED_ATTR = "data-yukari"
 const CONTAINER_CLASS = "yukari-rubi"
 
+// Scrapbox renders text as per-character spans inside its editor; the default
+// path would tokenize each char in isolation and mutate editor text nodes,
+// which gives wrong readings and can break cursor mapping. Handle it specially
+// by reconstructing the full text from char-index spans, tokenizing once, and
+// wrapping the spans of each kanji morpheme in a real <ruby> element so the
+// browser handles positioning and widening.
+const IS_SCRAPBOX =
+  location.hostname === "scrapbox.io" ||
+  location.hostname.endsWith(".scrapbox.io")
+// Stores the last-processed full text of a span.text so edits re-run tokenization.
+const SCRAPBOX_PROCESSED_ATTR = "data-yukari-scrapbox"
+const SCRAPBOX_RUBY_CLASS = "yukari-scrapbox-ruby"
+
 const SKIP_TAGS = new Set([
   "SCRIPT",
   "STYLE",
@@ -238,6 +251,10 @@ async function processTextNode(textNode: Text): Promise<void> {
 // --- Process all text nodes under root ---
 
 async function processRoot(root: Node): Promise<void> {
+  if (IS_SCRAPBOX) {
+    await processScrapboxRoot(root)
+    return
+  }
   const textNodes = collectTextNodes(root)
   if (textNodes.length === 0) return
 
@@ -249,9 +266,193 @@ async function processRoot(root: Node): Promise<void> {
   }
 }
 
+// --- Scrapbox-specific processing ---
+
+function collectScrapboxTextElements(root: Node): HTMLElement[] {
+  if (!(root instanceof Element) && !(root instanceof Document)) return []
+  const out: HTMLElement[] = []
+  const rootEl = root as Element
+  if (rootEl instanceof HTMLElement && rootEl.classList.contains("text")) {
+    out.push(rootEl)
+  }
+  const nested = rootEl.querySelectorAll<HTMLElement>("span.text")
+  for (const el of nested) out.push(el)
+  return out
+}
+
+function readScrapboxFullText(
+  textEl: HTMLElement,
+): { readonly charSpans: HTMLElement[]; readonly fullText: string } {
+  // Scrapbox sometimes wraps char-index spans in an intermediate <span>,
+  // so use a descendant selector rather than direct children.
+  const charSpans = Array.from(
+    textEl.querySelectorAll<HTMLElement>(".char-index"),
+  )
+  charSpans.sort((a, b) => {
+    const ai = Number(a.dataset.charIndex ?? "0")
+    const bi = Number(b.dataset.charIndex ?? "0")
+    return ai - bi
+  })
+  const fullText = charSpans
+    .map((s) => s.dataset.char ?? s.textContent ?? "")
+    .join("")
+  return { charSpans, fullText }
+}
+
+function unwrapScrapboxRubies(textEl: HTMLElement): void {
+  const rubies = textEl.querySelectorAll<HTMLElement>(
+    `ruby.${SCRAPBOX_RUBY_CLASS}`,
+  )
+  for (const ruby of rubies) {
+    const parent = ruby.parentNode
+    if (!parent) continue
+    // Move the char-index spans back out in front of the ruby, then drop
+    // the ruby (taking the <rt>/<rp> children with it).
+    for (const child of Array.from(ruby.childNodes)) {
+      if (
+        child instanceof HTMLElement &&
+        child.classList.contains("char-index")
+      ) {
+        parent.insertBefore(child, ruby)
+      }
+    }
+    ruby.remove()
+  }
+}
+
+async function processScrapboxTextElement(textEl: HTMLElement): Promise<void> {
+  const { fullText } = readScrapboxFullText(textEl)
+  if (fullText.length === 0) return
+
+  // Skip if the text hasn't changed since our last pass. Edits by scrapbox
+  // will update child char-index spans, changing fullText and re-triggering.
+  if (textEl.getAttribute(SCRAPBOX_PROCESSED_ATTR) === fullText) return
+  textEl.setAttribute(SCRAPBOX_PROCESSED_ATTR, fullText)
+
+  if (!containsKanji(fullText)) return
+
+  // Drop any stale rubies left over from a previous state of this line
+  // before tokenizing the current text.
+  unwrapScrapboxRubies(textEl)
+
+  let morphemes: readonly Morpheme[]
+  try {
+    morphemes = await tokenize(fullText)
+  } catch (e) {
+    textEl.removeAttribute(SCRAPBOX_PROCESSED_ATTR)
+    throw e
+  }
+
+  if (!active || !textEl.isConnected) return
+
+  // Re-query after the async gap in case scrapbox re-rendered the line.
+  const { charSpans, fullText: currentText } = readScrapboxFullText(textEl)
+  if (currentText !== fullText) {
+    textEl.removeAttribute(SCRAPBOX_PROCESSED_ATTR)
+    return
+  }
+
+  // Scrapbox creates one char-index span per JS string unit, so .length
+  // (UTF-16 units) lines up with char-index values directly.
+  let pos = 0
+  for (const m of morphemes) {
+    const segments = alignFurigana(m.surface, m.readingForm)
+    if (segments) {
+      let segPos = pos
+      for (const seg of segments) {
+        if (seg.type === "kanji") {
+          wrapScrapboxRuby(charSpans, segPos, seg.text.length, seg.reading)
+        }
+        segPos += seg.text.length
+      }
+    }
+    pos += m.surface.length
+  }
+}
+
+function wrapScrapboxRuby(
+  charSpans: readonly HTMLElement[],
+  startIdx: number,
+  length: number,
+  reading: string,
+): void {
+  const first = charSpans[startIdx]
+  if (!first) return
+  const parent = first.parentNode
+  if (!parent) return
+  // All spans in this morpheme must share a parent to be wrapped together.
+  for (let i = 1; i < length; i++) {
+    const span = charSpans[startIdx + i]
+    if (!span || span.parentNode !== parent) return
+  }
+  // If the first span is already inside one of our rubies (e.g. from a
+  // partial reprocess), skip to avoid double-wrapping.
+  if (first.parentElement?.closest(`ruby.${SCRAPBOX_RUBY_CLASS}`)) return
+
+  const ruby = document.createElement("ruby")
+  ruby.className = SCRAPBOX_RUBY_CLASS
+  parent.insertBefore(ruby, first)
+  for (let i = 0; i < length; i++) {
+    const span = charSpans[startIdx + i]
+    if (span) ruby.appendChild(span)
+  }
+  const rpOpen = document.createElement("rp")
+  rpOpen.textContent = "("
+  const rt = document.createElement("rt")
+  rt.textContent = reading
+  const rpClose = document.createElement("rp")
+  rpClose.textContent = ")"
+  ruby.appendChild(rpOpen)
+  ruby.appendChild(rt)
+  ruby.appendChild(rpClose)
+}
+
+async function processScrapboxRoot(root: Node): Promise<void> {
+  const elements = collectScrapboxTextElements(root)
+  if (elements.length === 0) return
+  const BATCH = 10
+  for (let i = 0; i < elements.length; i += BATCH) {
+    if (!active) break
+    const batch = elements.slice(i, i + BATCH)
+    await Promise.all(
+      batch.map((el) =>
+        processScrapboxTextElement(el).catch((e) => {
+          if (e instanceof Error && e.message.includes("DeadObject")) return
+          console.error("[yukari-rubi] scrapbox processing error:", e)
+        }),
+      ),
+    )
+  }
+}
+
+function removeScrapboxAnnotations(): void {
+  for (const ruby of document.querySelectorAll<HTMLElement>(
+    `ruby.${SCRAPBOX_RUBY_CLASS}`,
+  )) {
+    const parent = ruby.parentNode
+    if (!parent) continue
+    for (const child of Array.from(ruby.childNodes)) {
+      if (
+        child instanceof HTMLElement &&
+        child.classList.contains("char-index")
+      ) {
+        parent.insertBefore(child, ruby)
+      }
+    }
+    ruby.remove()
+  }
+  for (const el of document.querySelectorAll(`[${SCRAPBOX_PROCESSED_ATTR}]`)) {
+    el.removeAttribute(SCRAPBOX_PROCESSED_ATTR)
+  }
+}
+
 // --- Remove all annotations ---
 
 function removeAnnotations(): void {
+  if (IS_SCRAPBOX) {
+    removeScrapboxAnnotations()
+    return
+  }
   const containers = document.querySelectorAll(`.${CONTAINER_CLASS}`)
   for (const el of containers) {
     const original = el.getAttribute(PROCESSED_ATTR)
@@ -271,6 +472,25 @@ function startObserver(): void {
     for (const mutation of mutations) {
       for (const node of mutation.addedNodes) {
         try {
+          if (IS_SCRAPBOX) {
+            if (!(node instanceof HTMLElement)) continue
+            // Ignore our own <ruby> insertions so we don't re-enter.
+            if (node.classList.contains(SCRAPBOX_RUBY_CLASS)) continue
+            if (node.closest(`ruby.${SCRAPBOX_RUBY_CLASS}`)) continue
+            // Edits inside a line fire mutations on descendants of span.text;
+            // walk up to the containing .text and reprocess it as a whole.
+            const nearestText = node.closest?.("span.text") as
+              | HTMLElement
+              | null
+            if (nearestText) {
+              void processScrapboxTextElement(nearestText).catch((e) => {
+                if (e instanceof Error && e.message.includes("DeadObject")) return
+                console.error("[yukari-rubi] scrapbox mutation error:", e)
+              })
+            }
+            void processScrapboxRoot(node)
+            continue
+          }
           if (node instanceof HTMLElement && !node.classList.contains(CONTAINER_CLASS)) {
             void processRoot(node)
           } else if (node instanceof Text && node.textContent && containsKanji(node.textContent)) {

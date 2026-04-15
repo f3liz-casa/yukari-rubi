@@ -1,6 +1,6 @@
 {
   "name": "yukari-rubi",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Add furigana reading aids to Japanese text on web pages",
   "license": "Apache-2.0",
   "author": "f3liz-dev",
@@ -23,6 +23,7 @@
     "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
+    "@types/webextension-polyfill": "^0.12.5",
     "esbuild": "^0.25.0",
     "eslint": "^10.0.2",
     "eslint-plugin-functional": "^9.0.4",
