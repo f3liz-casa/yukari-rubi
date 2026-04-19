@@ -254,20 +254,25 @@
         margin-top: 3px;
       }
 
-      /* Shortcut */
-      .shortcut {
-        font-size: 11px;
-        color: var(--c-text-muted);
-        margin-top: 12px;
+      /* Open settings link */
+      .open-settings {
+        border-top: 1px solid var(--c-border-light);
+        padding-top: 10px;
+        margin-top: 10px;
         text-align: center;
       }
-      kbd {
+      .open-settings button {
+        background: transparent;
+        border: none;
+        color: var(--c-accent);
+        font-size: 12px;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: var(--radius-sm);
+        transition: background 0.12s ease;
+      }
+      .open-settings button:hover {
         background: var(--c-surface);
-        border: 1px solid var(--c-border);
-        padding: 1px 5px;
-        border-radius: 4px;
-        font-size: 10.5px;
-        font-family: ui-monospace, monospace;
       }
 
       /* Error */
@@ -313,8 +318,8 @@
       <div class="pattern-list" id="pattern-list"></div>
       <div class="pattern-hint" data-i18n="patternHint">* = any string, ** = entire path</div>
     </div>
-    <div class="shortcut">
-      <span data-i18n="shortcutLabel">Shortcut</span>: <kbd>Alt</kbd>+<kbd>F</kbd>
+    <div class="open-settings">
+      <button id="open-options-btn" data-i18n="openSettings">Open settings…</button>
     </div>
     <div class="error" id="error" hidden></div>
     <script src="popup.js"></script>

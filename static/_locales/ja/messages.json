@@ -40,5 +40,71 @@
   },
   "shortcutLabel": {
     "message": "ショートカット"
+  },
+  "shortcutEnableLabel": {
+    "message": "ショートカットを有効にする"
+  },
+  "shortcutCapturePlaceholder": {
+    "message": "クリックしてキーを押す"
+  },
+  "shortcutClear": {
+    "message": "クリア"
+  },
+  "shortcutReset": {
+    "message": "リセット"
+  },
+  "shortcutDisabled": {
+    "message": "（無効）"
+  },
+  "shortcutHint": {
+    "message": "入力欄をクリックしてから、使いたいキーの組み合わせを押してください。"
+  },
+  "userDictHeading": {
+    "message": "ユーザー辞書"
+  },
+  "userDictSurfacePlaceholder": {
+    "message": "単語（漢字）"
+  },
+  "userDictReadingPlaceholder": {
+    "message": "読み（任意の文字）"
+  },
+  "userDictAdd": {
+    "message": "追加"
+  },
+  "userDictHint": {
+    "message": "固有名詞・義訓・専門用語などの読みを上書きできます。任意の文字が使えます。"
+  },
+  "userDictInvalidSurface": {
+    "message": "単語には漢字を少なくとも1文字含めてください。"
+  },
+  "userDictInvalidReading": {
+    "message": "読みを入力してください。"
+  },
+  "openSettings": {
+    "message": "設定を開く…"
+  },
+  "optionsTitle": {
+    "message": "ゆかり ルビ 設定"
+  },
+  "optionsSubtitle": {
+    "message": "ショートカットとユーザー辞書を設定します。"
+  },
+  "shortcutSectionDesc": {
+    "message": "任意のページでこのキーの組み合わせを押すと、ふりがなの表示を切り替えます。"
+  },
+  "userDictSectionDesc": {
+    "message": "特定の単語の読みを上書きできます。読みには任意の文字が使えます（例：超電磁砲 → レールガン のような義訓）。"
+  },
+  "userDictColSurface": {
+    "message": "単語"
+  },
+  "userDictColReading": {
+    "message": "読み"
+  },
+  "userDictEmpty": {
+    "message": "まだエントリーがありません。"
+  },
+  "userDictRemove": {
+    "message": "削除"
   }
 }

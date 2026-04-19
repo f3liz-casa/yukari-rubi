@@ -49,10 +49,20 @@ await build({
   logLevel: "info",
 });
 
+// Bundle options script (IIFE — runs in options page context)
+await build({
+  entryPoints: [join(root, "src", "options.ts")],
+  bundle: true,
+  outfile: join(dist, "options.js"),
+  format: "iife",
+  target,
+  logLevel: "info",
+});
+
 // Copy static files
 const staticFiles = isChrome
-  ? ["popup.html", "content.css"]
-  : ["background.html", "popup.html", "content.css"];
+  ? ["popup.html", "options.html", "content.css"]
+  : ["background.html", "popup.html", "options.html", "content.css"];
 
 for (const file of staticFiles) {
   const src = join(staticDir, file);

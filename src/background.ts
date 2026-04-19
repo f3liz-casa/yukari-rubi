@@ -1,6 +1,8 @@
 import Browser from "webextension-polyfill"
 import { createBirpc } from "birpc"
-import type { BackgroundRPC } from "./rpc"
+import type { BackgroundRPC, Settings } from "./rpc"
+import type { Morpheme, UserDictEntry } from "./types"
+import { DEFAULT_SHORTCUT } from "./types"
 import init, { loadDictionary, tokenize as tokenizeWasm, freeDictionary } from "@f3liz/sudachi-wasm"
 
 let dictHandle: number | null = null
@@ -111,15 +113,88 @@ async function ensureTokenizer(): Promise<number> {
 
 // --- Default settings ---
 
+const SETTINGS_KEYS = [
+  "mutationObserver",
+  "rubySize",
+  "autoEnablePatterns",
+  "shortcut",
+  "userDictionary",
+] as const
+
 Browser.runtime.onInstalled.addListener(() => {
-  Browser.storage.local.get(["mutationObserver", "rubySize", "autoEnablePatterns"]).then((current) => {
+  Browser.storage.local.get([...SETTINGS_KEYS]).then((current) => {
     const defaults: Record<string, unknown> = {}
     if (current.mutationObserver === undefined) defaults.mutationObserver = false
     if (current.rubySize === undefined) defaults.rubySize = 50
     if (current.autoEnablePatterns === undefined) defaults.autoEnablePatterns = []
+    if (current.shortcut === undefined) defaults.shortcut = DEFAULT_SHORTCUT
+    if (current.userDictionary === undefined) defaults.userDictionary = []
     if (Object.keys(defaults).length > 0) Browser.storage.local.set(defaults)
   })
 })
+
+// --- User dictionary cache ---
+
+let userDictCache: readonly UserDictEntry[] | null = null
+
+async function getUserDictionary(): Promise<readonly UserDictEntry[]> {
+  if (userDictCache !== null) return userDictCache
+  const { userDictionary } = await Browser.storage.local.get("userDictionary")
+  const dict = (userDictionary as UserDictEntry[] | undefined) ?? []
+  userDictCache = dict
+  return dict
+}
+
+Browser.storage.onChanged.addListener((changes) => {
+  if (changes.userDictionary) {
+    userDictCache = (changes.userDictionary.newValue as UserDictEntry[] | undefined) ?? []
+  }
+})
+
+// Entries are tried longest-surface-first so overlapping overrides (e.g.
+// "東京" and "東京駅") resolve to the most specific match.
+function applyUserDictionary(
+  morphemes: readonly Morpheme[],
+  userDict: readonly UserDictEntry[],
+): readonly Morpheme[] {
+  if (userDict.length === 0) return morphemes
+  const sorted = [...userDict].sort((a, b) => b.surface.length - a.surface.length)
+
+  const result: Morpheme[] = []
+  let i = 0
+  while (i < morphemes.length) {
+    let matched = false
+    for (const entry of sorted) {
+      let acc = ""
+      let j = i
+      while (j < morphemes.length && acc.length < entry.surface.length) {
+        acc += morphemes[j]!.surface
+        j++
+      }
+      if (acc === entry.surface) {
+        result.push({
+          surface: entry.surface,
+          dictionaryForm: entry.surface,
+          readingForm: entry.reading,
+          normalizedForm: entry.surface,
+          partOfSpeech: ["名詞", "固有名詞"],
+          isOov: false,
+          begin: 0,
+          end: 0,
+          verbatimReading: true,
+        })
+        i = j
+        matched = true
+        break
+      }
+    }
+    if (!matched) {
+      result.push(morphemes[i]!)
+      i++
+    }
+  }
+  return result
+}
 
 // --- RPC Methods ---
 
@@ -135,10 +210,10 @@ const rpcMethods: BackgroundRPC = {
       const handle = await ensureTokenizer()
       const modeNum = MODE_MAP[mode] ?? 0
       const results = tokenizeWasm(handle, text, modeNum)
-      
+
       // Convert WASM results to our Morpheme format
       // Note: TokenResult instances have getters for surface/reading/pos
-      const morphemes = results.map((token: any) => ({
+      const morphemes: readonly Morpheme[] = results.map((token: any) => ({
         surface: token.surface || "",
         dictionaryForm: token.surface || "",
         readingForm: token.reading || "",
@@ -148,18 +223,21 @@ const rpcMethods: BackgroundRPC = {
         begin: 0, // WASM doesn't provide these
         end: 0,
       }))
-      
-      return { morphemes }
+
+      const userDict = await getUserDictionary()
+      const merged = applyUserDictionary(morphemes, userDict)
+
+      return { morphemes: merged }
     } catch (err) {
       return { error: String(err instanceof Error ? err.message : err) }
     }
   },
 
   async getSettings() {
-    return await Browser.storage.local.get(["mutationObserver", "rubySize", "autoEnablePatterns"])
+    return (await Browser.storage.local.get([...SETTINGS_KEYS])) as Settings
   },
 
-  async setSettings(settings: { mutationObserver?: boolean; rubySize?: number; autoEnablePatterns?: string[] }) {
+  async setSettings(settings: Settings) {
     await Browser.storage.local.set(settings)
     return { ok: true }
   },
@@ -248,17 +326,4 @@ Browser.tabs.onActivated.addListener(({ tabId }) => {
     (status: { active?: boolean }) => updateIcon(tabId, status?.active ?? false),
     () => updateIcon(tabId, false),
   )
-})
-
-// --- Keyboard shortcut ---
-
-Browser.commands.onCommand.addListener((command) => {
-  if (command === "toggle-furigana") {
-    Browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-      const tabId = tabs[0]?.id
-      if (tabId !== undefined) {
-        Browser.tabs.sendMessage(tabId, { type: "toggle" })
-      }
-    })
-  }
 })

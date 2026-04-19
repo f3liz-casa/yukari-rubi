@@ -31,13 +31,9 @@
     "default_popup": "popup.html",
     "default_title": "Yukari Rubi"
   },
-  "commands": {
-    "toggle-furigana": {
-      "suggested_key": {
-        "default": "Alt+F"
-      },
-      "description": "Toggle furigana on the current page"
-    }
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   },
   "content_security_policy": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
   "web_accessible_resources": ["wasm/*", "dict/*"],

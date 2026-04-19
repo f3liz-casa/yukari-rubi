@@ -1,7 +1,7 @@
 import Browser from "webextension-polyfill"
 import { createBirpc } from "birpc"
 import { alignFurigana, containsKanji } from "./lib/furigana"
-import type { Morpheme } from "./types"
+import type { Morpheme, Shortcut } from "./types"
 import type { BackgroundRPC } from "./rpc"
 
 const PROCESSED_ATTR = "data-yukari"
@@ -230,6 +230,11 @@ async function processTextNode(textNode: Text): Promise<void> {
   const parent = textNode.parentElement || document.body
 
   for (const m of morphemes) {
+    if (m.verbatimReading && m.readingForm) {
+      const segments = [{ type: "kanji" as const, text: m.surface, reading: m.readingForm }]
+      container.appendChild(createRubyFragment(segments, parent))
+      continue
+    }
     const segments = alignFurigana(m.surface, m.readingForm)
     if (segments) {
       container.appendChild(createRubyFragment(segments, parent))
@@ -356,6 +361,11 @@ async function processScrapboxTextElement(textEl: HTMLElement): Promise<void> {
   // (UTF-16 units) lines up with char-index values directly.
   let pos = 0
   for (const m of morphemes) {
+    if (m.verbatimReading && m.readingForm) {
+      wrapScrapboxRuby(charSpans, pos, m.surface.length, m.readingForm)
+      pos += m.surface.length
+      continue
+    }
     const segments = alignFurigana(m.surface, m.readingForm)
     if (segments) {
       let segPos = pos
@@ -576,7 +586,55 @@ Browser.storage.onChanged.addListener((changes) => {
   if (changes.rubySize?.newValue !== undefined) {
     document.documentElement.style.setProperty('--yukari-ruby-size', String(changes.rubySize.newValue))
   }
+  if ("shortcut" in changes) {
+    currentShortcut = (changes.shortcut.newValue as Shortcut | null | undefined) ?? null
+  }
 })
+
+// --- Keyboard shortcut ---
+
+let currentShortcut: Shortcut | null = null
+
+void Browser.storage.local.get("shortcut").then((result) => {
+  // `undefined` means the default hasn't been seeded yet (first install in a
+  // fresh profile); fall through as null — the background's onInstalled will
+  // populate it and the onChanged listener above will pick it up.
+  const stored = result.shortcut as Shortcut | null | undefined
+  currentShortcut = stored ?? null
+})
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true
+  if (target.isContentEditable) return true
+  return false
+}
+
+function shortcutMatches(ev: KeyboardEvent, s: Shortcut): boolean {
+  return (
+    ev.ctrlKey === s.ctrl &&
+    ev.altKey === s.alt &&
+    ev.shiftKey === s.shift &&
+    ev.metaKey === s.meta &&
+    ev.key.toLowerCase() === s.key.toLowerCase()
+  )
+}
+
+window.addEventListener(
+  "keydown",
+  (ev) => {
+    const s = currentShortcut
+    if (!s) return
+    if (ev.isComposing) return
+    if (isEditableTarget(ev.target)) return
+    if (!shortcutMatches(ev, s)) return
+    ev.preventDefault()
+    ev.stopPropagation()
+    void toggle()
+  },
+  true,
+)
 
 // --- Message listener ---
 

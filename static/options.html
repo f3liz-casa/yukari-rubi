@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Yukari Rubi — Settings</title>
+    <style>
+      :root {
+        --c-bg: #fefefe;
+        --c-surface: #f5f3f0;
+        --c-border: #e8e4df;
+        --c-border-light: #f0ece8;
+        --c-text: #3d3833;
+        --c-text-soft: #8a8279;
+        --c-text-muted: #b0a99f;
+        --c-accent: #6b8f71;
+        --c-accent-hover: #5a7d60;
+        --c-accent-text: #fff;
+        --c-danger: #c9564b;
+        --c-danger-border: #f0c8c4;
+        --c-warning: #c98a2e;
+        --radius: 8px;
+        --radius-sm: 6px;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 14px;
+        color: var(--c-text);
+        background: var(--c-bg);
+        line-height: 1.55;
+      }
+      .wrap {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 28px 24px 60px;
+      }
+      h1 {
+        font-size: 22px;
+        font-weight: 700;
+        margin: 0 0 4px 0;
+        letter-spacing: 0.01em;
+      }
+      .subtitle {
+        font-size: 13px;
+        color: var(--c-text-soft);
+        margin: 0 0 28px 0;
+      }
+      section {
+        border: 1px solid var(--c-border);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+        margin-bottom: 20px;
+        background: var(--c-bg);
+      }
+      section h2 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+      }
+      section .section-desc {
+        font-size: 12.5px;
+        color: var(--c-text-soft);
+        margin: 0 0 14px 0;
+      }
+      label.inline {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 13px;
+        cursor: pointer;
+        padding: 2px 0;
+      }
+      label.inline input[type="checkbox"] {
+        accent-color: var(--c-accent);
+      }
+
+      /* Shortcut editor */
+      .shortcut-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .shortcut-capture {
+        flex: 1;
+        padding: 8px 10px;
+        font-size: 13px;
+        border: 1px solid var(--c-border);
+        border-radius: var(--radius-sm);
+        background: var(--c-bg);
+        color: var(--c-text);
+        font-family: ui-monospace, monospace;
+        min-width: 0;
+        transition: border-color 0.15s ease;
+      }
+      .shortcut-capture:focus {
+        outline: none;
+        border-color: var(--c-accent);
+      }
+      .shortcut-capture.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .btn {
+        padding: 7px 14px;
+        font-size: 13px;
+        border: 1px solid var(--c-border);
+        border-radius: var(--radius-sm);
+        background: var(--c-surface);
+        color: var(--c-text);
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: background 0.12s ease;
+      }
+      .btn:hover {
+        background: var(--c-border);
+      }
+      .btn-primary {
+        background: var(--c-accent);
+        color: var(--c-accent-text);
+        border-color: var(--c-accent);
+      }
+      .btn-primary:hover {
+        background: var(--c-accent-hover);
+        border-color: var(--c-accent-hover);
+      }
+      .hint {
+        font-size: 11.5px;
+        color: var(--c-text-muted);
+        margin-top: 6px;
+      }
+
+      /* User dictionary */
+      .dict-add {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .dict-add input[type="text"] {
+        padding: 8px 10px;
+        font-size: 13px;
+        border: 1px solid var(--c-border);
+        border-radius: var(--radius-sm);
+        background: var(--c-bg);
+        color: var(--c-text);
+        min-width: 0;
+        transition: border-color 0.15s ease;
+      }
+      .dict-add input[type="text"]:focus {
+        outline: none;
+        border-color: var(--c-accent);
+      }
+      .dict-error {
+        color: var(--c-danger);
+        font-size: 12px;
+        margin-bottom: 8px;
+        padding: 6px 10px;
+        background: #fef2f2;
+        border-radius: var(--radius-sm);
+      }
+      .dict-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .dict-table th, .dict-table td {
+        text-align: left;
+        padding: 7px 10px;
+        border-bottom: 1px solid var(--c-border-light);
+        font-size: 13px;
+      }
+      .dict-table th {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--c-text-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .dict-table td.surface {
+        font-weight: 600;
+        color: var(--c-text);
+      }
+      .dict-table td.reading {
+        color: var(--c-text-soft);
+      }
+      .dict-table td.action {
+        width: 60px;
+        text-align: right;
+      }
+      .dict-empty {
+        font-size: 12.5px;
+        color: var(--c-text-muted);
+        padding: 12px 0;
+        text-align: center;
+      }
+      .dict-table button {
+        padding: 3px 9px;
+        font-size: 11.5px;
+        border: 1px solid var(--c-danger-border);
+        border-radius: 4px;
+        background: transparent;
+        color: var(--c-danger);
+        cursor: pointer;
+        transition: background 0.12s ease;
+      }
+      .dict-table button:hover {
+        background: #fef2f2;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1 data-i18n="optionsTitle">Yukari Rubi Settings</h1>
+      <p class="subtitle" data-i18n="optionsSubtitle">Configure the toggle shortcut and user dictionary.</p>
+
+      <section>
+        <h2 data-i18n="shortcutLabel">Shortcut</h2>
+        <p class="section-desc" data-i18n="shortcutSectionDesc">Press this key combination on any page to toggle furigana on or off.</p>
+        <label class="inline">
+          <input type="checkbox" id="shortcut-enable-cb" />
+          <span data-i18n="shortcutEnableLabel">Enable shortcut</span>
+        </label>
+        <div class="shortcut-row">
+          <input type="text" class="shortcut-capture" id="shortcut-input" readonly data-i18n-placeholder="shortcutCapturePlaceholder" />
+          <button class="btn" id="shortcut-clear" data-i18n="shortcutClear">Clear</button>
+          <button class="btn" id="shortcut-reset" data-i18n="shortcutReset">Reset</button>
+        </div>
+        <div class="hint" data-i18n="shortcutHint">Click the field, then press your desired key combination.</div>
+      </section>
+
+      <section>
+        <h2 data-i18n="userDictHeading">User dictionary</h2>
+        <p class="section-desc" data-i18n="userDictSectionDesc">Override the reading for specific words. Accepts any characters for the reading — useful for proper nouns, gikun (e.g. 超電磁砲 → レールガン), or technical terms.</p>
+        <div class="dict-add">
+          <input type="text" id="dict-surface-input" placeholder="超電磁砲" data-i18n-placeholder="userDictSurfacePlaceholder" />
+          <input type="text" id="dict-reading-input" placeholder="レールガン" data-i18n-placeholder="userDictReadingPlaceholder" />
+          <button class="btn btn-primary" id="dict-add-btn" data-i18n="userDictAdd">Add</button>
+        </div>
+        <div class="dict-error" id="dict-error" hidden></div>
+        <table class="dict-table" id="dict-table" hidden>
+          <thead>
+            <tr>
+              <th data-i18n="userDictColSurface">Word</th>
+              <th data-i18n="userDictColReading">Reading</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="dict-tbody"></tbody>
+        </table>
+        <div class="dict-empty" id="dict-empty" data-i18n="userDictEmpty">No entries yet.</div>
+      </section>
+    </div>
+    <script src="options.js"></script>
+  </body>
+</html>

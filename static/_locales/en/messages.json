@@ -40,5 +40,71 @@
   },
   "shortcutLabel": {
     "message": "Shortcut"
+  },
+  "shortcutEnableLabel": {
+    "message": "Enable shortcut"
+  },
+  "shortcutCapturePlaceholder": {
+    "message": "Click and press keys"
+  },
+  "shortcutClear": {
+    "message": "Clear"
+  },
+  "shortcutReset": {
+    "message": "Reset"
+  },
+  "shortcutDisabled": {
+    "message": "(disabled)"
+  },
+  "shortcutHint": {
+    "message": "Click the field, then press your desired key combination."
+  },
+  "userDictHeading": {
+    "message": "User dictionary"
+  },
+  "userDictSurfacePlaceholder": {
+    "message": "Word (kanji)"
+  },
+  "userDictReadingPlaceholder": {
+    "message": "Reading (any characters)"
+  },
+  "userDictAdd": {
+    "message": "Add"
+  },
+  "userDictHint": {
+    "message": "Override readings for proper nouns, gikun, or technical terms. Any characters are allowed."
+  },
+  "userDictInvalidSurface": {
+    "message": "Word must contain at least one kanji."
+  },
+  "userDictInvalidReading": {
+    "message": "Reading cannot be empty."
+  },
+  "openSettings": {
+    "message": "Open settings…"
+  },
+  "optionsTitle": {
+    "message": "Yukari Rubi Settings"
+  },
+  "optionsSubtitle": {
+    "message": "Configure the toggle shortcut and user dictionary."
+  },
+  "shortcutSectionDesc": {
+    "message": "Press this key combination on any page to toggle furigana on or off."
+  },
+  "userDictSectionDesc": {
+    "message": "Override the reading for specific words. Accepts any characters for the reading — useful for proper nouns, gikun (e.g. 超電磁砲 → レールガン), or technical terms."
+  },
+  "userDictColSurface": {
+    "message": "Word"
+  },
+  "userDictColReading": {
+    "message": "Reading"
+  },
+  "userDictEmpty": {
+    "message": "No entries yet."
+  },
+  "userDictRemove": {
+    "message": "Remove"
   }
 }

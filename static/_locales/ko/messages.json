@@ -40,5 +40,71 @@
   },
   "shortcutLabel": {
     "message": "단축키"
+  },
+  "shortcutEnableLabel": {
+    "message": "단축키 사용"
+  },
+  "shortcutCapturePlaceholder": {
+    "message": "클릭 후 키 조합 입력"
+  },
+  "shortcutClear": {
+    "message": "지우기"
+  },
+  "shortcutReset": {
+    "message": "초기화"
+  },
+  "shortcutDisabled": {
+    "message": "(사용 안 함)"
+  },
+  "shortcutHint": {
+    "message": "입력란을 클릭한 뒤 원하는 키 조합을 누르세요."
+  },
+  "userDictHeading": {
+    "message": "사용자 사전"
+  },
+  "userDictSurfacePlaceholder": {
+    "message": "단어 (한자)"
+  },
+  "userDictReadingPlaceholder": {
+    "message": "읽기 (임의 문자)"
+  },
+  "userDictAdd": {
+    "message": "추가"
+  },
+  "userDictHint": {
+    "message": "고유명사·기쿤·전문 용어의 읽기를 재정의합니다. 임의의 문자를 사용할 수 있습니다."
+  },
+  "userDictInvalidSurface": {
+    "message": "단어에는 한자가 하나 이상 포함되어야 합니다."
+  },
+  "userDictInvalidReading": {
+    "message": "읽기를 입력하세요."
+  },
+  "openSettings": {
+    "message": "설정 열기…"
+  },
+  "optionsTitle": {
+    "message": "유카리 루비 설정"
+  },
+  "optionsSubtitle": {
+    "message": "단축키와 사용자 사전을 설정합니다."
+  },
+  "shortcutSectionDesc": {
+    "message": "어떤 페이지에서든 이 키 조합을 누르면 후리가나를 켜거나 끕니다."
+  },
+  "userDictSectionDesc": {
+    "message": "특정 단어의 읽기를 재정의합니다. 읽기에는 임의의 문자를 사용할 수 있습니다 (예: 超電磁砲 → レールガン 같은 기쿤)."
+  },
+  "userDictColSurface": {
+    "message": "단어"
+  },
+  "userDictColReading": {
+    "message": "읽기"
+  },
+  "userDictEmpty": {
+    "message": "등록된 항목이 없습니다."
+  },
+  "userDictRemove": {
+    "message": "삭제"
   }
 }

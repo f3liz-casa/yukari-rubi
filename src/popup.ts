@@ -15,6 +15,8 @@ const patternInput = document.getElementById("pattern-input") as HTMLInputElemen
 const addPatternBtn = document.getElementById("add-pattern-btn")!
 const patternListEl = document.getElementById("pattern-list")!
 
+const openOptionsBtn = document.getElementById("open-options-btn")!
+
 const SIZE_STEP = 10
 const SIZE_MIN = 10
 const SIZE_MAX = 200
@@ -32,6 +34,13 @@ function applyI18n(): void {
     const msg = t(key)
     if (msg !== key) {
       el.textContent = msg
+    }
+  }
+  for (const el of document.querySelectorAll<HTMLInputElement>("[data-i18n-placeholder]")) {
+    const key = el.dataset.i18nPlaceholder!
+    const msg = t(key)
+    if (msg !== key) {
+      el.placeholder = msg
     }
   }
 }
@@ -127,6 +136,11 @@ function changeSize(delta: number): void {
 
 sizeDecBtn.addEventListener("click", () => changeSize(-SIZE_STEP))
 sizeIncBtn.addEventListener("click", () => changeSize(SIZE_STEP))
+
+openOptionsBtn.addEventListener("click", () => {
+  void Browser.runtime.openOptionsPage()
+  window.close()
+})
 
 // --- Auto-enable patterns ---
 

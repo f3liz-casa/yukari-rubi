@@ -1,4 +1,12 @@
-import type { Morpheme } from "./types"
+import type { Morpheme, Shortcut, UserDictEntry } from "./types"
+
+export interface Settings {
+  mutationObserver?: boolean
+  rubySize?: number
+  autoEnablePatterns?: string[]
+  shortcut?: Shortcut | null
+  userDictionary?: readonly UserDictEntry[]
+}
 
 // RPC interface for background script methods
 export interface BackgroundRPC {
@@ -6,8 +14,8 @@ export interface BackgroundRPC {
     morphemes?: readonly Morpheme[]
     error?: string
   }>
-  getSettings(): Promise<{ mutationObserver?: boolean; rubySize?: number; autoEnablePatterns?: string[] }>
-  setSettings(settings: { mutationObserver?: boolean; rubySize?: number; autoEnablePatterns?: string[] }): Promise<{ ok: boolean }>
+  getSettings(): Promise<Settings>
+  setSettings(settings: Settings): Promise<{ ok: boolean }>
   preload(): Promise<{ ready: boolean; error?: string }>
 }
 
