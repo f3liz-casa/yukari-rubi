@@ -17,7 +17,6 @@
     "package:chrome": "npm run fetch-dict && npm run build:chrome && npx web-ext build --source-dir dist-chrome --artifacts-dir artifacts"
   },
   "dependencies": {
-    "@chenglou/pretext": "^0.0.4",
     "@f3liz/sudachi-wasm": "^0.1.7",
     "birpc": "^4.0.0",
     "webextension-polyfill": "^0.12.0"
