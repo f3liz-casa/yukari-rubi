@@ -122,6 +122,9 @@
   "zhStyleLegend": {
     "message": "Chinese reading style"
   },
+  "zhStylePinyinFamily": {
+    "message": "Pinyin"
+  },
   "zhStylePinyinMarks": {
     "message": "Pinyin (nǐ hǎo)"
   },

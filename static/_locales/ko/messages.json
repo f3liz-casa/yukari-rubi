@@ -122,6 +122,9 @@
   "zhStyleLegend": {
     "message": "중국어 읽기 방식"
   },
+  "zhStylePinyinFamily": {
+    "message": "병음"
+  },
   "zhStylePinyinMarks": {
     "message": "병음 (nǐ hǎo)"
   },

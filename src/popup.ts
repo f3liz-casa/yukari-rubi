@@ -16,6 +16,9 @@ const sizeWarningEl = document.getElementById("size-warning")!
 const langJaCb = document.getElementById("lang-ja") as HTMLInputElement
 const langZhHansCb = document.getElementById("lang-zh-hans") as HTMLInputElement
 const langZhHantCb = document.getElementById("lang-zh-hant") as HTMLInputElement
+const zhStyleFamilyRadios = document.querySelectorAll<HTMLInputElement>(
+  'input[name="zh-style-family"]',
+)
 const zhStyleRadios = document.querySelectorAll<HTMLInputElement>('input[name="zh-style"]')
 const zhuyinPosRadios = document.querySelectorAll<HTMLInputElement>('input[name="zhuyin-pos"]')
 
@@ -32,6 +35,7 @@ const SIZE_MAX = 200
 const SIZE_WARNING_THRESHOLD = 100
 
 let currentSize = 50
+let lastPinyinStyle: ZhStyle = DEFAULT_ZH_STYLE
 
 function t(key: string): string {
   return Browser.i18n.getMessage(key) || key
@@ -66,6 +70,15 @@ function updateUI(isActive: boolean): void {
   dot.classList.toggle("active", isActive)
   statusText.textContent = isActive ? t("statusActive") : t("statusInactive")
   toggleBtn.textContent = isActive ? t("disableFurigana") : t("enableFurigana")
+}
+
+function syncZhStyleUI(style: ZhStyle): void {
+  if (style !== "bopomofo") {
+    lastPinyinStyle = style
+  }
+  const family = style === "bopomofo" ? "bopomofo" : "pinyin"
+  for (const r of zhStyleFamilyRadios) r.checked = r.value === family
+  for (const r of zhStyleRadios) r.checked = r.value === style
 }
 
 function showError(msg: string): void {
@@ -119,7 +132,7 @@ async function init(): Promise<void> {
     langZhHansCb.checked = langs.zhHans
     langZhHantCb.checked = langs.zhHant
     const style = settings.zhStyle ?? DEFAULT_ZH_STYLE
-    for (const r of zhStyleRadios) r.checked = r.value === style
+    syncZhStyleUI(style)
     const zhuyinPos = settings.zhuyinPosition ?? DEFAULT_ZHUYIN_POSITION
     for (const r of zhuyinPosRadios) r.checked = r.value === zhuyinPos
   } catch (err) {
@@ -172,7 +185,18 @@ langZhHantCb.addEventListener("change", saveLanguages)
 for (const r of zhStyleRadios) {
   r.addEventListener("change", () => {
     if (!r.checked) return
-    void Browser.storage.local.set({ zhStyle: r.value as ZhStyle })
+    const style = r.value as ZhStyle
+    syncZhStyleUI(style)
+    void Browser.storage.local.set({ zhStyle: style })
+  })
+}
+
+for (const r of zhStyleFamilyRadios) {
+  r.addEventListener("change", () => {
+    if (!r.checked) return
+    const style = r.value === "bopomofo" ? "bopomofo" : lastPinyinStyle
+    syncZhStyleUI(style)
+    void Browser.storage.local.set({ zhStyle: style })
   })
 }
 

@@ -122,6 +122,9 @@
   "zhStyleLegend": {
     "message": "中国語の読み方"
   },
+  "zhStylePinyinFamily": {
+    "message": "ピンイン"
+  },
   "zhStylePinyinMarks": {
     "message": "ピンイン（nǐ hǎo）"
   },
