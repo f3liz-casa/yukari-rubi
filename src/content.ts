@@ -494,6 +494,12 @@ function removeAnnotations(): void {
       el.parentNode?.replaceChild(textNode, el)
     }
   }
+
+  async function restartAnnotations(): Promise<void> {
+    if (!active) return
+    deactivate()
+    await activate()
+  }
 }
 
 // --- MutationObserver ---
@@ -627,18 +633,21 @@ Browser.storage.onChanged.addListener((changes) => {
       ...langSettings,
       toggles: (changes.languages.newValue as LanguageToggles | undefined) ?? DEFAULT_LANGUAGES,
     }
+    void restartAnnotations()
   }
   if ("zhStyle" in changes) {
     langSettings = {
       ...langSettings,
       zhStyle: (changes.zhStyle.newValue as ZhStyle | undefined) ?? DEFAULT_ZH_STYLE,
     }
+    void restartAnnotations()
   }
   if ("zhuyinPosition" in changes) {
     document.documentElement.setAttribute(
       "data-yukari-zhuyin-pos",
       (changes.zhuyinPosition.newValue as string | undefined) ?? "right",
     )
+    void refreshAnnotations()
   }
   if ("autoEnablePatterns" in changes) {
     langSettings = {
@@ -711,6 +720,13 @@ Browser.runtime.onMessage.addListener(
     }
     if (message.type === "deactivate") {
       if (active) deactivate()
+      return undefined
+    }
+    if (message.type === "refresh") {
+      if (active) {
+        deactivate()
+        void activate()
+      }
       return undefined
     }
     if (message.type === "getStatus") {

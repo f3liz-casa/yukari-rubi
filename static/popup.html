@@ -191,16 +191,16 @@
         gap: 7px;
         margin-top: 2px;
       }
-      .zh-style-family input[type="radio"]:disabled {
-        opacity: 1;
-        cursor: default;
-      }
       .zh-style-subchoices {
         display: grid;
         gap: 2px;
         margin: 0 0 2px 18px;
         padding-left: 8px;
         border-left: 1px solid var(--c-border-light);
+      }
+      .zh-style-subchoices.is-disabled {
+        opacity: 0.45;
+        pointer-events: none;
       }
       .zh-style-subchoices label {
         font-size: 11.5px;
@@ -387,7 +387,7 @@
             <input type="radio" name="zh-style-family" value="pinyin" />
             <span data-i18n="zhStylePinyinFamily">Pinyin</span>
           </label>
-          <div class="zh-style-subchoices">
+          <div class="zh-style-subchoices" data-zh-subchoices="pinyin">
             <label>
               <input type="radio" name="zh-style" value="pinyin-marks" />
               <span data-i18n="zhStylePinyinMarks">Pinyin (nǐ hǎo)</span>
@@ -405,16 +405,7 @@
             <input type="radio" name="zh-style-family" value="bopomofo" />
             <span data-i18n="zhStyleBopomofo">Bopomofo (ㄋㄧˇ)</span>
           </label>
-        </fieldset>
-      </div>
-      <div class="zh-style">
-        <fieldset>
-          <legend data-i18n="zhuyinPosLegend">Bopomofo placement</legend>
-          <label class="zh-style-family">
-            <input type="radio" checked disabled />
-            <span data-i18n="zhStyleBopomofo">Bopomofo (ㄋㄧˇ)</span>
-          </label>
-          <div class="zh-style-subchoices">
+          <div class="zh-style-subchoices" data-zh-subchoices="bopomofo">
             <label>
               <input type="radio" name="zhuyin-pos" value="right" />
               <span data-i18n="zhuyinPosRight">Right of character (standard)</span>

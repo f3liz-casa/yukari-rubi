@@ -21,6 +21,10 @@ const zhStyleFamilyRadios = document.querySelectorAll<HTMLInputElement>(
 )
 const zhStyleRadios = document.querySelectorAll<HTMLInputElement>('input[name="zh-style"]')
 const zhuyinPosRadios = document.querySelectorAll<HTMLInputElement>('input[name="zhuyin-pos"]')
+const pinyinSubchoices = document.querySelector<HTMLElement>('[data-zh-subchoices="pinyin"]')!
+const bopomofoSubchoices = document.querySelector<HTMLElement>(
+  '[data-zh-subchoices="bopomofo"]',
+)!
 
 const addCurrentSiteBtn = document.getElementById("add-current-site")!
 const patternInput = document.getElementById("pattern-input") as HTMLInputElement
@@ -72,13 +76,51 @@ function updateUI(isActive: boolean): void {
   toggleBtn.textContent = isActive ? t("disableFurigana") : t("enableFurigana")
 }
 
+async function refreshActiveTab(): Promise<void> {
+  const tabs = await Browser.tabs.query({
+    active: true,
+    currentWindow: true,
+  })
+  const tabId = tabs[0]?.id
+  if (tabId !== undefined) {
+    await Browser.tabs.sendMessage(tabId, { type: "refresh" })
+  }
+}
+
+function setRadioGroupEnabled(group: HTMLElement, enabled: boolean): void {
+  group.classList.toggle("is-disabled", !enabled)
+  for (const input of group.querySelectorAll<HTMLInputElement>("input")) {
+    input.disabled = !enabled
+  }
+}
+
+function checkedValue(radios: NodeListOf<HTMLInputElement>): string | undefined {
+  for (const radio of radios) {
+    if (radio.checked) return radio.value
+  }
+  return undefined
+}
+
+function setCheckedValue(radios: NodeListOf<HTMLInputElement>, value: string): void {
+  for (const radio of radios) {
+    radio.checked = radio.value === value
+  }
+}
+
 function syncZhStyleUI(style: ZhStyle): void {
   if (style !== "bopomofo") {
     lastPinyinStyle = style
   }
-  const family = style === "bopomofo" ? "bopomofo" : "pinyin"
-  for (const r of zhStyleFamilyRadios) r.checked = r.value === family
-  for (const r of zhStyleRadios) r.checked = r.value === style
+  const pinyinActive = style !== "bopomofo"
+  for (const r of zhStyleFamilyRadios) r.checked = r.value === (pinyinActive ? "pinyin" : "bopomofo")
+  setRadioGroupEnabled(pinyinSubchoices, pinyinActive)
+  setRadioGroupEnabled(bopomofoSubchoices, !pinyinActive)
+  if (pinyinActive && checkedValue(zhStyleRadios) === undefined) {
+    setCheckedValue(zhStyleRadios, style)
+  }
+  if (!pinyinActive && checkedValue(zhStyleRadios) === undefined) {
+    setCheckedValue(zhStyleRadios, lastPinyinStyle)
+  }
 }
 
 function showError(msg: string): void {
@@ -132,9 +174,10 @@ async function init(): Promise<void> {
     langZhHansCb.checked = langs.zhHans
     langZhHantCb.checked = langs.zhHant
     const style = settings.zhStyle ?? DEFAULT_ZH_STYLE
-    syncZhStyleUI(style)
+    setCheckedValue(zhStyleRadios, style === "bopomofo" ? lastPinyinStyle : style)
     const zhuyinPos = settings.zhuyinPosition ?? DEFAULT_ZHUYIN_POSITION
-    for (const r of zhuyinPosRadios) r.checked = r.value === zhuyinPos
+    setCheckedValue(zhuyinPosRadios, zhuyinPos)
+    syncZhStyleUI(style)
   } catch (err) {
     showError(String(err))
   }
@@ -176,6 +219,7 @@ function saveLanguages(): void {
     zhHant: langZhHantCb.checked,
   }
   void Browser.storage.local.set({ languages: toggles })
+  void refreshActiveTab()
 }
 
 langJaCb.addEventListener("change", saveLanguages)
@@ -186,17 +230,20 @@ for (const r of zhStyleRadios) {
   r.addEventListener("change", () => {
     if (!r.checked) return
     const style = r.value as ZhStyle
+    lastPinyinStyle = style
     syncZhStyleUI(style)
     void Browser.storage.local.set({ zhStyle: style })
+    void refreshActiveTab()
   })
 }
 
 for (const r of zhStyleFamilyRadios) {
   r.addEventListener("change", () => {
     if (!r.checked) return
-    const style = r.value === "bopomofo" ? "bopomofo" : lastPinyinStyle
+    const style = r.value === "bopomofo" ? "bopomofo" : (checkedValue(zhStyleRadios) as ZhStyle) ?? lastPinyinStyle
     syncZhStyleUI(style)
     void Browser.storage.local.set({ zhStyle: style })
+    void refreshActiveTab()
   })
 }
 
@@ -204,6 +251,7 @@ for (const r of zhuyinPosRadios) {
   r.addEventListener("change", () => {
     if (!r.checked) return
     void Browser.storage.local.set({ zhuyinPosition: r.value as ZhuyinPosition })
+    void refreshActiveTab()
   })
 }
 
