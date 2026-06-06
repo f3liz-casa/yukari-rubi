@@ -1,5 +1,6 @@
 {
   "manifest_version": 3,
+  "minimum_chrome_version": "116",
   "name": "__MSG_extensionName__",
   "default_locale": "en",
   "icons": {

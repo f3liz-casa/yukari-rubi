@@ -1,9 +1,17 @@
-import Browser from "webextension-polyfill"
-import { createBirpc } from "birpc"
-import type { BackgroundRPC, Settings } from "./rpc"
-import type { Morpheme, UserDictEntry } from "./types"
-import { DEFAULT_SHORTCUT } from "./types"
+import initPinyin, { pinyin_for } from "@f3liz/pinyin-wasm"
 import init, { loadDictionary, tokenize as tokenizeWasm, freeDictionary } from "@f3liz/sudachi-wasm"
+import { createBirpc } from "birpc"
+import Browser from "webextension-polyfill"
+
+import { pinyinSyllableToZhuyin } from "./lib/zhuyin"
+import type { BackgroundRPC, Settings } from "./rpc"
+import type { Morpheme, RubyAnnotation, UserDictEntry, ZhStyle } from "./types"
+import {
+  DEFAULT_LANGUAGES,
+  DEFAULT_SHORTCUT,
+  DEFAULT_ZH_STYLE,
+  DEFAULT_ZHUYIN_POSITION,
+} from "./types"
 
 let dictHandle: number | null = null
 let initPromise: Promise<number> | null = null
@@ -88,7 +96,10 @@ async function ensureTokenizer(): Promise<number> {
       dictHandle = loadDictionary(dictBytes)
     } catch (err) {
       // Dict from cache may be corrupt — clear it and retry with bundled file
-      console.warn("[yukari-rubi] Failed to load dictionary (possibly corrupt cache), clearing cache and retrying...", err)
+      console.warn(
+        "[yukari-rubi] Failed to load dictionary (possibly corrupt cache), clearing cache and retrying...",
+        err,
+      )
       await clearDictFromIDB()
       const dictUrl = Browser.runtime.getURL("dict/system_core.xdic")
       const resp = await fetch(dictUrl)
@@ -119,6 +130,9 @@ const SETTINGS_KEYS = [
   "autoEnablePatterns",
   "shortcut",
   "userDictionary",
+  "languages",
+  "zhStyle",
+  "zhuyinPosition",
 ] as const
 
 Browser.runtime.onInstalled.addListener(() => {
@@ -129,6 +143,9 @@ Browser.runtime.onInstalled.addListener(() => {
     if (current.autoEnablePatterns === undefined) defaults.autoEnablePatterns = []
     if (current.shortcut === undefined) defaults.shortcut = DEFAULT_SHORTCUT
     if (current.userDictionary === undefined) defaults.userDictionary = []
+    if (current.languages === undefined) defaults.languages = DEFAULT_LANGUAGES
+    if (current.zhStyle === undefined) defaults.zhStyle = DEFAULT_ZH_STYLE
+    if (current.zhuyinPosition === undefined) defaults.zhuyinPosition = DEFAULT_ZHUYIN_POSITION
     if (Object.keys(defaults).length > 0) Browser.storage.local.set(defaults)
   })
 })
@@ -152,13 +169,16 @@ Browser.storage.onChanged.addListener((changes) => {
 })
 
 // Entries are tried longest-surface-first so overlapping overrides (e.g.
-// "東京" and "東京駅") resolve to the most specific match.
+// "東京" and "東京駅") resolve to the most specific match. v1 only honors
+// Japanese entries; the lang field defaults to 'ja' when absent.
 function applyUserDictionary(
   morphemes: readonly Morpheme[],
   userDict: readonly UserDictEntry[],
 ): readonly Morpheme[] {
   if (userDict.length === 0) return morphemes
-  const sorted = [...userDict].sort((a, b) => b.surface.length - a.surface.length)
+  const jaOnly = userDict.filter((e) => e.lang === undefined || e.lang === "ja")
+  if (jaOnly.length === 0) return morphemes
+  const sorted = [...jaOnly].sort((a, b) => b.surface.length - a.surface.length)
 
   const result: Morpheme[] = []
   let i = 0
@@ -196,6 +216,87 @@ function applyUserDictionary(
   return result
 }
 
+// --- Chinese annotation (pinyin / bopomofo) ---
+//
+// Lifecycle parallels Sudachi: lazy WASM init on first use. v1 uses
+// character-level lookup only — phrase-aware polyphone disambiguation will
+// land alongside phrase-pinyin-data integration in v2.
+
+let pinyinReady: Promise<void> | null = null
+
+async function ensurePinyin(): Promise<void> {
+  if (!pinyinReady) {
+    pinyinReady = (async () => {
+      console.log("[yukari-rubi] Initializing pinyin-wasm...")
+      const wasmUrl = Browser.runtime.getURL("wasm/pinyin_wasm_bg.wasm")
+      await initPinyin({ module_or_path: wasmUrl })
+      console.log("[yukari-rubi] pinyin-wasm ready.")
+    })().catch((err) => {
+      pinyinReady = null
+      throw err
+    })
+  }
+  return pinyinReady
+}
+
+interface PyEntry {
+  readonly origin: string
+  // serde-wasm-bindgen serialises `Option<None>` as a missing key rather
+  // than `null`, so this is undefined for non-han characters.
+  readonly pinyin?: string
+}
+
+// Map our user-facing ZhStyle to the WASM module's numeric style.
+// For bopomofo we still ask for tone-numbered pinyin (style 2) and convert
+// each syllable through pinyinSyllableToZhuyin afterwards — pinyin-wasm
+// 0.1 has no native bopomofo output.
+function wasmStyleFor(style: ZhStyle): number {
+  switch (style) {
+    case "pinyin-none":
+      return 0
+    case "pinyin-marks":
+      return 1
+    case "pinyin-num":
+      return 2
+    case "bopomofo":
+      return 2
+  }
+}
+
+const HAN_PATTERN = /[㐀-鿿豈-﫿]/
+
+async function annotateZhText(text: string, style: ZhStyle): Promise<readonly RubyAnnotation[]> {
+  if (!HAN_PATTERN.test(text)) {
+    return [{ type: "text", text }]
+  }
+  await ensurePinyin()
+  const entries = pinyin_for(text, wasmStyleFor(style)) as readonly PyEntry[]
+
+  const out: RubyAnnotation[] = []
+  let buffer = ""
+  for (const entry of entries) {
+    if (!entry.pinyin) {
+      buffer += entry.origin
+      continue
+    }
+    if (buffer.length > 0) {
+      out.push({ type: "text", text: buffer })
+      buffer = ""
+    }
+    const rt = style === "bopomofo" ? pinyinSyllableToZhuyin(entry.pinyin) : entry.pinyin
+    out.push({
+      type: "ruby",
+      base: entry.origin,
+      rt,
+      script: style === "bopomofo" ? "zhuyin" : "pinyin",
+    })
+  }
+  if (buffer.length > 0) {
+    out.push({ type: "text", text: buffer })
+  }
+  return out
+}
+
 // --- RPC Methods ---
 
 const MODE_MAP: Record<string, number> = {
@@ -228,6 +329,15 @@ const rpcMethods: BackgroundRPC = {
       const merged = applyUserDictionary(morphemes, userDict)
 
       return { morphemes: merged }
+    } catch (err) {
+      return { error: String(err instanceof Error ? err.message : err) }
+    }
+  },
+
+  async annotateZh(text: string, opts: { style: ZhStyle }) {
+    try {
+      const annotations = await annotateZhText(text, opts.style)
+      return { annotations }
     } catch (err) {
       return { error: String(err instanceof Error ? err.message : err) }
     }
@@ -273,7 +383,7 @@ createBirpc<BackgroundRPC>(rpcMethods, {
   on: (fn) => {
     Browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // Check if this is a birpc message by looking for the type field
-      if (message && typeof message === 'object' && message.t) {
+      if (message && typeof message === "object" && message.t) {
         console.log("[yukari-rubi] Background received birpc message, ID:", (message as any).i)
         // Store sendResponse callback for this message ID
         if ((message as any).i) {

@@ -1,4 +1,5 @@
 import Browser from "webextension-polyfill"
+
 import { DEFAULT_SHORTCUT } from "./types"
 import type { Shortcut, UserDictEntry } from "./types"
 

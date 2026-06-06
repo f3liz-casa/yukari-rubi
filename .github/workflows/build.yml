@@ -28,8 +28,11 @@ jobs:
       - name: Build Firefox
         run: npm run build
 
+      - name: Package Firefox source
+        run: node scripts/make-source-archive.mjs artifacts/yukari_rubi-source-${{ github.ref_name || 'dev' }}.tar.gz
+
       - name: Package Firefox (xpi/zip)
-        run: npx web-ext build --config web-ext.config.mjs --overwrite-dest
+        run: npx web-ext build --config web-ext.config.mjs --overwrite-dest --filename yukari_rubi-firefox-${{ github.ref_name || 'dev' }}.zip
 
       - name: Build Chrome
         run: npm run build:chrome
@@ -37,22 +40,15 @@ jobs:
       - name: Package Chrome (zip)
         run: npx web-ext build --source-dir dist-chrome --artifacts-dir artifacts --overwrite-dest --filename yukari_rubi-chrome-${{ github.ref_name || 'dev' }}.zip
 
-      - name: Rename Firefox artifact
-        run: |
-          for f in artifacts/yukari_rubi-*.zip; do
-            case "$f" in *chrome*) continue ;; esac
-            mv "$f" "artifacts/yukari_rubi-firefox-${{ github.ref_name || 'dev' }}.zip"
-          done
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: yukari-rubi-${{ github.ref_name || 'dev' }}
-          path: artifacts/*.zip
+          path: artifacts/*
 
       - name: Create release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*.zip
+          files: artifacts/*
           generate_release_notes: true

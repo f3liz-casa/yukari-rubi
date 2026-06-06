@@ -10,6 +10,7 @@ const dist = join(root, isChrome ? "dist-chrome" : "dist");
 const staticDir = join(root, "static");
 const sudachiPkg = join(root, "node_modules", "@f3liz", "sudachi-wasm", "pkg");
 const sudachiDict = join(root, "dict", "system_core.xdic");
+const pinyinPkg = join(root, "node_modules", "@f3liz", "pinyin-wasm");
 const target = isChrome ? ["chrome116"] : ["firefox115"];
 
 // Clean
@@ -106,6 +107,18 @@ if (existsSync(sudachiPkg)) {
   console.log("✅ Copied WASM files from @f3liz/sudachi-wasm");
 } else {
   console.warn("⚠️  @f3liz/sudachi-wasm not found at:", sudachiPkg);
+}
+
+if (existsSync(pinyinPkg)) {
+  for (const file of ["pinyin_wasm.js", "pinyin_wasm_bg.wasm"]) {
+    const src = join(pinyinPkg, file);
+    if (existsSync(src)) {
+      cpSync(src, join(dist, "wasm", file));
+    }
+  }
+  console.log("✅ Copied WASM files from @f3liz/pinyin-wasm");
+} else {
+  console.warn("⚠️  @f3liz/pinyin-wasm not found at:", pinyinPkg);
 }
 
 // Copy dictionary (large file, only if present)

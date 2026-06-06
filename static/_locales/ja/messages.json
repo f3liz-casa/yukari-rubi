@@ -106,5 +106,41 @@
   },
   "userDictRemove": {
     "message": "削除"
+  },
+  "languages": {
+    "message": "言語"
+  },
+  "languageJa": {
+    "message": "日本語"
+  },
+  "languageZhHans": {
+    "message": "簡体字中国語"
+  },
+  "languageZhHant": {
+    "message": "繁体字中国語"
+  },
+  "zhStyleLegend": {
+    "message": "中国語の読み方"
+  },
+  "zhStylePinyinMarks": {
+    "message": "ピンイン（nǐ hǎo）"
+  },
+  "zhStylePinyinNum": {
+    "message": "ピンイン（ni3 hao3）"
+  },
+  "zhStylePinyinNone": {
+    "message": "ピンイン（ni hao）"
+  },
+  "zhStyleBopomofo": {
+    "message": "ボポモフォ（ㄋㄧˇ）"
+  },
+  "zhuyinPosLegend": {
+    "message": "注音の配置"
+  },
+  "zhuyinPosRight": {
+    "message": "漢字の右（標準）"
+  },
+  "zhuyinPosTop": {
+    "message": "漢字の上"
   }
 }

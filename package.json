@@ -1,6 +1,6 @@
 {
   "name": "yukari-rubi",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Add furigana reading aids to Japanese text on web pages",
   "license": "Apache-2.0",
   "author": "f3liz-dev",
@@ -13,7 +13,7 @@
     "dev:chrome": "npm run build:chrome && npx web-ext run --source-dir dist-chrome --target chromium",
     "lint": "oxlint",
     "fmt": "oxfmt --write src/",
-    "package": "npm run fetch-dict && npm run build && npx web-ext build --config web-ext.config.mjs",
+    "package": "npm run fetch-dict && npm run build && npx web-ext build --config web-ext.config.mjs --overwrite-dest && node scripts/make-source-archive.mjs",
     "package:chrome": "npm run fetch-dict && npm run build:chrome && npx web-ext build --source-dir dist-chrome --artifacts-dir artifacts"
   },
   "dependencies": {

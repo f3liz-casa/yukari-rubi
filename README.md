@@ -17,7 +17,7 @@ Supported on Firefox 115+ and Chromium 116+.
 
 ## Install
 
-Pre-built artifacts land in `artifacts/` after `npm run package` / `npm run package:chrome`. From-source builds work as below.
+Pre-built artifacts land in `artifacts/` after `npm run package` / `npm run package:chrome`. Firefox packaging also emits a source tarball for publish workflows. From-source builds work as below.
 
 ## Development
 
@@ -34,7 +34,7 @@ Other scripts:
 | --- | --- |
 | `npm run build` | Build the Firefox bundle into `dist/` |
 | `npm run build:chrome` | Build the Chrome bundle into `dist-chrome/` |
-| `npm run package` | `fetch-dict` + build + `web-ext build` → signed-ready `.zip` in `artifacts/` |
+| `npm run package` | `fetch-dict` + build + `web-ext build` + source tarball → signed-ready `.zip` + `.tar.gz` in `artifacts/` |
 | `npm run package:chrome` | Same, for Chrome |
 | `npm run lint` | `oxlint` |
 | `npm run fmt` | `oxfmt --write src/` |
@@ -55,8 +55,9 @@ static/
   _locales/             # en, ja, ko
   icons/, *.html, content.css
 scripts/
-  build.mjs       # esbuild driver, copies manifest + WASM + dictionary
-  fetch-dict.mjs  # downloads the Sudachi system dictionary
+  build.mjs               # esbuild driver, copies manifest + WASM + dictionary
+  fetch-dict.mjs          # downloads the Sudachi system dictionary
+  make-source-archive.mjs  # creates the Firefox source tarball for publish
 dict/system_core.xdic  # populated by fetch-dict
 ```
 

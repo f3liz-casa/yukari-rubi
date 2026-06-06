@@ -31,3 +31,92 @@ ruby.yukari-scrapbox-ruby > rt {
   opacity: 0.8;
   user-select: none;
 }
+
+/* Bopomofo (zhuyin) glyphs are visually denser than pinyin/kana — give the
+   rt a small size bump so individual symbols stay legible at typical ruby
+   sizes. Pinyin and kana use the default sizing above. */
+.yukari-rubi rt[data-yukari-script="zhuyin"],
+ruby.yukari-scrapbox-ruby > rt[data-yukari-script="zhuyin"] {
+  font-size: calc(var(--yukari-ruby-size, 50) * 0.011em);
+  letter-spacing: 0.02em;
+}
+
+/* Zhuyin is traditionally placed to the right of each character as a
+   vertical strip (Taiwanese textbook convention). The spec way is
+   `ruby-position: inter-character`, but Firefox doesn't implement it for
+   horizontal text and WebKit only partially does — even the W3C i18n note
+   on bopomofo confirms there is no working browser implementation.
+   So we abandon native ruby layout for zhuyin and lay it out by hand:
+   the <ruby> becomes a small inline-flex row of [base | vertical rt]. */
+html[data-yukari-zhuyin-pos="right"] ruby[data-yukari-script="zhuyin"] {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  vertical-align: baseline;
+  ruby-position: unset;
+  /* Breathing room before the next character so adjacent zhuyin syllables
+     don't visually crash into each other. */
+  margin-right: 0.1em;
+}
+
+/* rt becomes a small two-column box:
+     [ letters column ] [ tone column ]
+   Letters stack vertically (writing-mode), tone sits middle of its column
+   to the right. Neutral tone (˙) breaks the rule and goes ABOVE the
+   letters — flip rt to a column and reorder via the data attr. */
+html[data-yukari-zhuyin-pos="right"] ruby[data-yukari-script="zhuyin"] > rt {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  font-size: calc(var(--yukari-ruby-size, 50) * 0.011em);
+  line-height: 1;
+  letter-spacing: 0;
+  margin: 0 0 0 0.05em;
+  padding: 0;
+}
+
+html[data-yukari-zhuyin-pos="right"]
+  ruby[data-yukari-script="zhuyin"]
+  > rt
+  > .yk-zh-syl {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  line-height: 1;
+}
+
+html[data-yukari-zhuyin-pos="right"]
+  ruby[data-yukari-script="zhuyin"]
+  > rt
+  > .yk-zh-tone {
+  display: inline-block;
+  line-height: 1;
+  /* Negative pulls the tone mark in toward the letter column so the two
+     read as a single syllable group. */
+  margin-left: -0.1em;
+  /* Tone marks are tiny — bump a touch so they don't disappear next to the
+     vertical letter column. */
+  font-size: 1.1em;
+  /* Hang the tone at the top-right of the rime (last letter). The JS side
+     sets --yk-zh-tone-offset to (letters-1)em so it aligns with the last
+     letter's top edge instead of the column's top edge. */
+  align-self: flex-start;
+  /* margin (not padding) so the global nudge can pull negative when the
+     syllable is a single letter. */
+  margin-top: var(--yk-zh-tone-offset, 0);
+}
+
+/* Neutral tone: dot above the letter column instead of a side column. */
+html[data-yukari-zhuyin-pos="right"]
+  ruby[data-yukari-script="zhuyin"]
+  > rt[data-yukari-zhuyin-tone="neutral"] {
+  flex-direction: column;
+  align-items: center;
+}
+
+html[data-yukari-zhuyin-pos="right"]
+  ruby[data-yukari-script="zhuyin"]
+  > rt[data-yukari-zhuyin-tone="neutral"]
+  > .yk-zh-tone {
+  order: -1;
+  margin-left: 0;
+}

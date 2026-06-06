@@ -1,0 +1,146 @@
+{
+  "extensionName": {
+    "message": "Yukari Rubi"
+  },
+  "extensionDescription": {
+    "message": "为网页上的中文与日文文本添加注音（拼音 / 注音符号 / 假名）"
+  },
+  "statusActive": {
+    "message": "已启用"
+  },
+  "statusInactive": {
+    "message": "已停用"
+  },
+  "enableFurigana": {
+    "message": "启用注音"
+  },
+  "disableFurigana": {
+    "message": "停用注音"
+  },
+  "watchNewContent": {
+    "message": "监听新内容"
+  },
+  "rubySize": {
+    "message": "注音大小"
+  },
+  "sizeWarning": {
+    "message": "过大的尺寸可能会破坏页面布局"
+  },
+  "autoEnableSites": {
+    "message": "自动启用的网站"
+  },
+  "addCurrentSite": {
+    "message": "添加当前网站"
+  },
+  "addPattern": {
+    "message": "添加"
+  },
+  "patternHint": {
+    "message": "* = 任意字符串，** = 整个路径"
+  },
+  "shortcutLabel": {
+    "message": "快捷键"
+  },
+  "shortcutEnableLabel": {
+    "message": "启用快捷键"
+  },
+  "shortcutCapturePlaceholder": {
+    "message": "点击后按下按键"
+  },
+  "shortcutClear": {
+    "message": "清除"
+  },
+  "shortcutReset": {
+    "message": "重置"
+  },
+  "shortcutDisabled": {
+    "message": "（已停用）"
+  },
+  "shortcutHint": {
+    "message": "点击输入框，然后按下想要的键位组合。"
+  },
+  "userDictHeading": {
+    "message": "用户词典"
+  },
+  "userDictSurfacePlaceholder": {
+    "message": "词语（汉字）"
+  },
+  "userDictReadingPlaceholder": {
+    "message": "读音（任意字符）"
+  },
+  "userDictAdd": {
+    "message": "添加"
+  },
+  "userDictHint": {
+    "message": "覆盖专有名词、义训、术语的读音。允许任意字符。"
+  },
+  "userDictInvalidSurface": {
+    "message": "词语必须至少包含一个汉字。"
+  },
+  "userDictInvalidReading": {
+    "message": "读音不能为空。"
+  },
+  "openSettings": {
+    "message": "打开设置…"
+  },
+  "optionsTitle": {
+    "message": "Yukari Rubi 设置"
+  },
+  "optionsSubtitle": {
+    "message": "配置切换快捷键与用户词典。"
+  },
+  "shortcutSectionDesc": {
+    "message": "在任意页面按下此组合键即可切换注音的开关。"
+  },
+  "userDictSectionDesc": {
+    "message": "覆盖特定词语的读音。读音允许任意字符——适用于专有名词、义训（如 超電磁砲 → レールガン）或专业术语。"
+  },
+  "userDictColSurface": {
+    "message": "词语"
+  },
+  "userDictColReading": {
+    "message": "读音"
+  },
+  "userDictEmpty": {
+    "message": "暂无条目。"
+  },
+  "userDictRemove": {
+    "message": "删除"
+  },
+  "languages": {
+    "message": "语言"
+  },
+  "languageJa": {
+    "message": "日语"
+  },
+  "languageZhHans": {
+    "message": "简体中文"
+  },
+  "languageZhHant": {
+    "message": "繁体中文"
+  },
+  "zhStyleLegend": {
+    "message": "中文注音方式"
+  },
+  "zhStylePinyinMarks": {
+    "message": "拼音（nǐ hǎo）"
+  },
+  "zhStylePinyinNum": {
+    "message": "拼音（ni3 hao3）"
+  },
+  "zhStylePinyinNone": {
+    "message": "拼音（ni hao）"
+  },
+  "zhStyleBopomofo": {
+    "message": "注音符号（ㄋㄧˇ）"
+  },
+  "zhuyinPosLegend": {
+    "message": "注音符号位置"
+  },
+  "zhuyinPosRight": {
+    "message": "汉字右侧（标准）"
+  },
+  "zhuyinPosTop": {
+    "message": "汉字上方"
+  }
+}

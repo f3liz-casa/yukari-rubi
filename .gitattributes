@@ -1,0 +1,4 @@
+.DS_Store export-ignore
+.idea export-ignore
+.idea/** export-ignore
+.vscode export-ignore

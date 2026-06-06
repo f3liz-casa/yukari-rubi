@@ -1,5 +1,8 @@
 import Browser from "webextension-polyfill"
 
+import type { AutoEnableEntry, LanguageToggles, ZhStyle, ZhuyinPosition } from "./types"
+import { DEFAULT_LANGUAGES, DEFAULT_ZH_STYLE, DEFAULT_ZHUYIN_POSITION } from "./types"
+
 const dot = document.getElementById("dot")!
 const statusText = document.getElementById("status-text")!
 const toggleBtn = document.getElementById("toggle-btn")!
@@ -9,6 +12,12 @@ const sizeDecBtn = document.getElementById("size-dec")!
 const sizeIncBtn = document.getElementById("size-inc")!
 const sizeValueEl = document.getElementById("size-value")!
 const sizeWarningEl = document.getElementById("size-warning")!
+
+const langJaCb = document.getElementById("lang-ja") as HTMLInputElement
+const langZhHansCb = document.getElementById("lang-zh-hans") as HTMLInputElement
+const langZhHantCb = document.getElementById("lang-zh-hant") as HTMLInputElement
+const zhStyleRadios = document.querySelectorAll<HTMLInputElement>('input[name="zh-style"]')
+const zhuyinPosRadios = document.querySelectorAll<HTMLInputElement>('input[name="zhuyin-pos"]')
 
 const addCurrentSiteBtn = document.getElementById("add-current-site")!
 const patternInput = document.getElementById("pattern-input") as HTMLInputElement
@@ -75,22 +84,44 @@ async function init(): Promise<void> {
     const tabId = tabs[0]?.id
     if (tabId !== undefined) {
       try {
-        const status: { active?: boolean } = await Browser.tabs.sendMessage(
-          tabId,
-          { type: "getStatus" },
-        )
+        const status: { active?: boolean } = await Browser.tabs.sendMessage(tabId, {
+          type: "getStatus",
+        })
         updateUI(status?.active ?? false)
       } catch {
         updateUI(false)
       }
     }
 
-    const settings: { mutationObserver?: boolean; rubySize?: number; autoEnablePatterns?: string[] } =
-      await Browser.storage.local.get(["mutationObserver", "rubySize", "autoEnablePatterns"])
+    const settings: {
+      mutationObserver?: boolean
+      rubySize?: number
+      autoEnablePatterns?: AutoEnableEntry[]
+      languages?: LanguageToggles
+      zhStyle?: ZhStyle
+      zhuyinPosition?: ZhuyinPosition
+    } = await Browser.storage.local.get([
+      "mutationObserver",
+      "rubySize",
+      "autoEnablePatterns",
+      "languages",
+      "zhStyle",
+      "zhuyinPosition",
+    ])
     mutationCb.checked = settings.mutationObserver ?? false
     updateSizeUI(settings.rubySize ?? 50)
-    patterns = settings.autoEnablePatterns ?? []
+    patterns = (settings.autoEnablePatterns ?? []).map((e) =>
+      typeof e === "string" ? e : e.pattern,
+    )
     renderPatterns()
+    const langs = settings.languages ?? DEFAULT_LANGUAGES
+    langJaCb.checked = langs.ja
+    langZhHansCb.checked = langs.zhHans
+    langZhHantCb.checked = langs.zhHant
+    const style = settings.zhStyle ?? DEFAULT_ZH_STYLE
+    for (const r of zhStyleRadios) r.checked = r.value === style
+    const zhuyinPos = settings.zhuyinPosition ?? DEFAULT_ZHUYIN_POSITION
+    for (const r of zhuyinPosRadios) r.checked = r.value === zhuyinPos
   } catch (err) {
     showError(String(err))
   }
@@ -107,10 +138,9 @@ toggleBtn.addEventListener("click", async () => {
       await Browser.tabs.sendMessage(tabId, { type: "toggle" })
       await new Promise((r) => setTimeout(r, 150))
       try {
-        const status: { active?: boolean } = await Browser.tabs.sendMessage(
-          tabId,
-          { type: "getStatus" },
-        )
+        const status: { active?: boolean } = await Browser.tabs.sendMessage(tabId, {
+          type: "getStatus",
+        })
         updateUI(status?.active ?? false)
       } catch {
         const wasInactive = statusText.textContent === t("statusInactive")
@@ -125,6 +155,33 @@ toggleBtn.addEventListener("click", async () => {
 mutationCb.addEventListener("change", () => {
   void Browser.storage.local.set({ mutationObserver: mutationCb.checked })
 })
+
+function saveLanguages(): void {
+  const toggles: LanguageToggles = {
+    ja: langJaCb.checked,
+    zhHans: langZhHansCb.checked,
+    zhHant: langZhHantCb.checked,
+  }
+  void Browser.storage.local.set({ languages: toggles })
+}
+
+langJaCb.addEventListener("change", saveLanguages)
+langZhHansCb.addEventListener("change", saveLanguages)
+langZhHantCb.addEventListener("change", saveLanguages)
+
+for (const r of zhStyleRadios) {
+  r.addEventListener("change", () => {
+    if (!r.checked) return
+    void Browser.storage.local.set({ zhStyle: r.value as ZhStyle })
+  })
+}
+
+for (const r of zhuyinPosRadios) {
+  r.addEventListener("change", () => {
+    if (!r.checked) return
+    void Browser.storage.local.set({ zhuyinPosition: r.value as ZhuyinPosition })
+  })
+}
 
 function changeSize(delta: number): void {
   const newSize = Math.max(SIZE_MIN, Math.min(SIZE_MAX, currentSize + delta))

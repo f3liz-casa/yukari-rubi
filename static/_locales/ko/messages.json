@@ -106,5 +106,41 @@
   },
   "userDictRemove": {
     "message": "삭제"
+  },
+  "languages": {
+    "message": "언어"
+  },
+  "languageJa": {
+    "message": "일본어"
+  },
+  "languageZhHans": {
+    "message": "중국어 간체"
+  },
+  "languageZhHant": {
+    "message": "중국어 번체"
+  },
+  "zhStyleLegend": {
+    "message": "중국어 읽기 방식"
+  },
+  "zhStylePinyinMarks": {
+    "message": "병음 (nǐ hǎo)"
+  },
+  "zhStylePinyinNum": {
+    "message": "병음 (ni3 hao3)"
+  },
+  "zhStylePinyinNone": {
+    "message": "병음 (ni hao)"
+  },
+  "zhStyleBopomofo": {
+    "message": "주음부호 (ㄋㄧˇ)"
+  },
+  "zhuyinPosLegend": {
+    "message": "주음부호 위치"
+  },
+  "zhuyinPosRight": {
+    "message": "한자의 오른쪽 (표준)"
+  },
+  "zhuyinPosTop": {
+    "message": "한자의 위"
   }
 }

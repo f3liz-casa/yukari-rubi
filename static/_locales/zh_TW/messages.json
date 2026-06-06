@@ -1,0 +1,146 @@
+{
+  "extensionName": {
+    "message": "Yukari Rubi"
+  },
+  "extensionDescription": {
+    "message": "為網頁上的中文與日文文字加上注音（拼音 / 注音符號 / 假名）"
+  },
+  "statusActive": {
+    "message": "已啟用"
+  },
+  "statusInactive": {
+    "message": "已停用"
+  },
+  "enableFurigana": {
+    "message": "啟用注音"
+  },
+  "disableFurigana": {
+    "message": "停用注音"
+  },
+  "watchNewContent": {
+    "message": "監聽新內容"
+  },
+  "rubySize": {
+    "message": "注音大小"
+  },
+  "sizeWarning": {
+    "message": "過大的尺寸可能會破壞頁面排版"
+  },
+  "autoEnableSites": {
+    "message": "自動啟用的網站"
+  },
+  "addCurrentSite": {
+    "message": "加入目前網站"
+  },
+  "addPattern": {
+    "message": "新增"
+  },
+  "patternHint": {
+    "message": "* = 任意字串，** = 整個路徑"
+  },
+  "shortcutLabel": {
+    "message": "快速鍵"
+  },
+  "shortcutEnableLabel": {
+    "message": "啟用快速鍵"
+  },
+  "shortcutCapturePlaceholder": {
+    "message": "點擊後按下按鍵"
+  },
+  "shortcutClear": {
+    "message": "清除"
+  },
+  "shortcutReset": {
+    "message": "重設"
+  },
+  "shortcutDisabled": {
+    "message": "（已停用）"
+  },
+  "shortcutHint": {
+    "message": "點擊輸入框後按下想要的按鍵組合。"
+  },
+  "userDictHeading": {
+    "message": "使用者字典"
+  },
+  "userDictSurfacePlaceholder": {
+    "message": "詞語（漢字）"
+  },
+  "userDictReadingPlaceholder": {
+    "message": "讀音（任意字元）"
+  },
+  "userDictAdd": {
+    "message": "新增"
+  },
+  "userDictHint": {
+    "message": "覆蓋專有名詞、義訓、術語的讀音。允許任意字元。"
+  },
+  "userDictInvalidSurface": {
+    "message": "詞語必須至少包含一個漢字。"
+  },
+  "userDictInvalidReading": {
+    "message": "讀音不能為空。"
+  },
+  "openSettings": {
+    "message": "開啟設定…"
+  },
+  "optionsTitle": {
+    "message": "Yukari Rubi 設定"
+  },
+  "optionsSubtitle": {
+    "message": "設定切換快速鍵與使用者字典。"
+  },
+  "shortcutSectionDesc": {
+    "message": "在任意頁面按下此組合鍵即可切換注音的開關。"
+  },
+  "userDictSectionDesc": {
+    "message": "覆蓋特定詞語的讀音。讀音允許任意字元——適用於專有名詞、義訓（如 超電磁砲 → レールガン）或專業術語。"
+  },
+  "userDictColSurface": {
+    "message": "詞語"
+  },
+  "userDictColReading": {
+    "message": "讀音"
+  },
+  "userDictEmpty": {
+    "message": "尚無項目。"
+  },
+  "userDictRemove": {
+    "message": "刪除"
+  },
+  "languages": {
+    "message": "語言"
+  },
+  "languageJa": {
+    "message": "日文"
+  },
+  "languageZhHans": {
+    "message": "簡體中文"
+  },
+  "languageZhHant": {
+    "message": "繁體中文"
+  },
+  "zhStyleLegend": {
+    "message": "中文注音方式"
+  },
+  "zhStylePinyinMarks": {
+    "message": "拼音（nǐ hǎo）"
+  },
+  "zhStylePinyinNum": {
+    "message": "拼音（ni3 hao3）"
+  },
+  "zhStylePinyinNone": {
+    "message": "拼音（ni hao）"
+  },
+  "zhStyleBopomofo": {
+    "message": "注音符號（ㄋㄧˇ）"
+  },
+  "zhuyinPosLegend": {
+    "message": "注音符號位置"
+  },
+  "zhuyinPosRight": {
+    "message": "漢字右側（標準）"
+  },
+  "zhuyinPosTop": {
+    "message": "漢字上方"
+  }
+}

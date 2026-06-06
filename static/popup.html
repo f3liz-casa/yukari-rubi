@@ -152,6 +152,44 @@
         margin-top: 4px;
       }
 
+      /* Languages */
+      .languages {
+        border-top: 1px solid var(--c-border-light);
+        padding-top: 10px;
+        margin-top: 10px;
+      }
+      .languages h2 {
+        font-size: 12.5px;
+        margin: 0 0 6px 0;
+        font-weight: 600;
+      }
+      .languages label {
+        font-size: 12.5px;
+      }
+      .zh-style {
+        margin-top: 8px;
+      }
+      .zh-style legend {
+        font-size: 11.5px;
+        color: var(--c-text-soft);
+        margin-bottom: 4px;
+        padding: 0;
+      }
+      .zh-style fieldset {
+        border: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2px 8px;
+      }
+      .zh-style label {
+        font-size: 12px;
+      }
+      .zh-style input[type="radio"] {
+        accent-color: var(--c-accent);
+      }
+
       /* Auto-enable sites */
       .auto-enable {
         border-top: 1px solid var(--c-border-light);
@@ -306,6 +344,55 @@
       </div>
       <div class="size-warning" id="size-warning" hidden data-i18n="sizeWarning">
         Large sizes may break page layout
+      </div>
+    </div>
+    <div class="languages">
+      <h2 data-i18n="languages">Languages</h2>
+      <label>
+        <input type="checkbox" id="lang-ja" />
+        <span data-i18n="languageJa">Japanese</span>
+      </label>
+      <label>
+        <input type="checkbox" id="lang-zh-hans" />
+        <span data-i18n="languageZhHans">简体中文</span>
+      </label>
+      <label>
+        <input type="checkbox" id="lang-zh-hant" />
+        <span data-i18n="languageZhHant">繁體中文</span>
+      </label>
+      <div class="zh-style">
+        <fieldset>
+          <legend data-i18n="zhStyleLegend">Chinese reading style</legend>
+          <label>
+            <input type="radio" name="zh-style" value="pinyin-marks" />
+            <span data-i18n="zhStylePinyinMarks">Pinyin (nǐ hǎo)</span>
+          </label>
+          <label>
+            <input type="radio" name="zh-style" value="pinyin-num" />
+            <span data-i18n="zhStylePinyinNum">Pinyin (ni3 hao3)</span>
+          </label>
+          <label>
+            <input type="radio" name="zh-style" value="pinyin-none" />
+            <span data-i18n="zhStylePinyinNone">Pinyin (ni hao)</span>
+          </label>
+          <label>
+            <input type="radio" name="zh-style" value="bopomofo" />
+            <span data-i18n="zhStyleBopomofo">Bopomofo (ㄋㄧˇ)</span>
+          </label>
+        </fieldset>
+      </div>
+      <div class="zh-style">
+        <fieldset>
+          <legend data-i18n="zhuyinPosLegend">Bopomofo placement</legend>
+          <label>
+            <input type="radio" name="zhuyin-pos" value="right" />
+            <span data-i18n="zhuyinPosRight">Right of character (standard)</span>
+          </label>
+          <label>
+            <input type="radio" name="zhuyin-pos" value="top" />
+            <span data-i18n="zhuyinPosTop">Above character</span>
+          </label>
+        </fieldset>
       </div>
     </div>
     <div class="auto-enable">

@@ -106,5 +106,41 @@
   },
   "userDictRemove": {
     "message": "Remove"
+  },
+  "languages": {
+    "message": "Languages"
+  },
+  "languageJa": {
+    "message": "Japanese"
+  },
+  "languageZhHans": {
+    "message": "Simplified Chinese"
+  },
+  "languageZhHant": {
+    "message": "Traditional Chinese"
+  },
+  "zhStyleLegend": {
+    "message": "Chinese reading style"
+  },
+  "zhStylePinyinMarks": {
+    "message": "Pinyin (nǐ hǎo)"
+  },
+  "zhStylePinyinNum": {
+    "message": "Pinyin (ni3 hao3)"
+  },
+  "zhStylePinyinNone": {
+    "message": "Pinyin (ni hao)"
+  },
+  "zhStyleBopomofo": {
+    "message": "Bopomofo (ㄋㄧˇ)"
+  },
+  "zhuyinPosLegend": {
+    "message": "Bopomofo placement"
+  },
+  "zhuyinPosRight": {
+    "message": "Right of character (standard)"
+  },
+  "zhuyinPosTop": {
+    "message": "Above character"
   }
 }

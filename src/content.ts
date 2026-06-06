@@ -1,8 +1,20 @@
-import Browser from "webextension-polyfill"
 import { createBirpc } from "birpc"
-import { alignFurigana, containsKanji } from "./lib/furigana"
-import type { Morpheme, Shortcut } from "./types"
+import Browser from "webextension-polyfill"
+
+import { containsCJK, morphemesToAnnotations } from "./lib/furigana"
+import { detectLangSegments } from "./lib/lang-detect"
+import { createRubyFragmentFromAnnotations, splitZhuyin } from "./lib/ruby"
 import type { BackgroundRPC } from "./rpc"
+import type {
+  AutoEnableEntry,
+  LangCode,
+  LanguageToggles,
+  Morpheme,
+  RubyAnnotation,
+  Shortcut,
+  ZhStyle,
+} from "./types"
+import { DEFAULT_LANGUAGES, DEFAULT_ZH_STYLE } from "./types"
 
 const PROCESSED_ATTR = "data-yukari"
 const CONTAINER_CLASS = "yukari-rubi"
@@ -14,8 +26,7 @@ const CONTAINER_CLASS = "yukari-rubi"
 // wrapping the spans of each kanji morpheme in a real <ruby> element so the
 // browser handles positioning and widening.
 const IS_SCRAPBOX =
-  location.hostname === "scrapbox.io" ||
-  location.hostname.endsWith(".scrapbox.io")
+  location.hostname === "scrapbox.io" || location.hostname.endsWith(".scrapbox.io")
 // Stores the last-processed full text of a span.text so edits re-run tokenization.
 const SCRAPBOX_PROCESSED_ATTR = "data-yukari-scrapbox"
 const SCRAPBOX_RUBY_CLASS = "yukari-scrapbox-ruby"
@@ -52,13 +63,32 @@ let processing = false
 // --- Glob pattern matching for URLs ---
 
 function globToRegExp(pattern: string): RegExp {
-  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&')
-  const withWildcards = escaped.replace(/\*\*/g, '\x00').replace(/\*/g, '[^/]*').replace(/\x00/g, '.*')
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&")
+  const withWildcards = escaped
+    .replace(/\*\*/g, "\x00")
+    .replace(/\*/g, "[^/]*")
+    .replace(/\x00/g, ".*")
   return new RegExp(`^${withWildcards}$`)
+}
+
+function patternsOf(entries: readonly AutoEnableEntry[]): string[] {
+  return entries.map((e) => (typeof e === "string" ? e : e.pattern))
 }
 
 function urlMatchesPatterns(url: string, patterns: string[]): boolean {
   return patterns.some((p) => globToRegExp(p).test(url))
+}
+
+// --- Language settings cache (refreshed on activate + storage.onChanged) ---
+
+let langSettings: {
+  toggles: LanguageToggles
+  zhStyle: ZhStyle
+  autoEnablePatterns: readonly AutoEnableEntry[]
+} = {
+  toggles: DEFAULT_LANGUAGES,
+  zhStyle: DEFAULT_ZH_STYLE,
+  autoEnablePatterns: [],
 }
 
 // --- Set up birpc client ---
@@ -67,37 +97,50 @@ function urlMatchesPatterns(url: string, patterns: string[]): boolean {
 // but birpc expects them via the on() callback. We need to bridge this.
 let onMessageCallback: ((data: any) => void) | null = null
 
-const bg = createBirpc<BackgroundRPC>({}, {
-  post: async (data) => {
-    console.log("[yukari-rubi] Content sending birpc message:", data)
-    const response = await Browser.runtime.sendMessage(data)
-    console.log("[yukari-rubi] Content received birpc response:", response)
-    // Feed the response back into birpc via the on() callback
-    if (response && onMessageCallback) {
-      onMessageCallback(response)
-    }
-    return response
-  },
-  on: (fn) => {
-    onMessageCallback = fn
-    Browser.runtime.onMessage.addListener((message) => {
-      // Check if this is a birpc message by looking for the type field
-      if (message && typeof message === 'object' && message.t) {
-        console.log("[yukari-rubi] Content received birpc message:", message)
-        fn(message)
+const bg = createBirpc<BackgroundRPC>(
+  {},
+  {
+    post: async (data) => {
+      console.log("[yukari-rubi] Content sending birpc message:", data)
+      const response = await Browser.runtime.sendMessage(data)
+      console.log("[yukari-rubi] Content received birpc response:", response)
+      // Feed the response back into birpc via the on() callback
+      if (response && onMessageCallback) {
+        onMessageCallback(response)
       }
-    })
+      return response
+    },
+    on: (fn) => {
+      onMessageCallback = fn
+      Browser.runtime.onMessage.addListener((message) => {
+        // Check if this is a birpc message by looking for the type field
+        if (message && typeof message === "object" && message.t) {
+          console.log("[yukari-rubi] Content received birpc message:", message)
+          fn(message)
+        }
+      })
+    },
+    serialize: (v) => v,
+    deserialize: (v) => v,
   },
-  serialize: (v) => v,
-  deserialize: (v) => v,
-})
+)
 
-// --- Tokenization via background ---
+// --- Annotation via background (per-language dispatch) ---
 
 async function tokenize(text: string): Promise<readonly Morpheme[]> {
   const response = await bg.tokenize(text, "A")
   if (response.error) throw new Error(response.error)
   return response.morphemes ?? []
+}
+
+async function annotateForLang(text: string, lang: LangCode): Promise<readonly RubyAnnotation[]> {
+  if (lang === "ja") {
+    const morphemes = await tokenize(text)
+    return morphemesToAnnotations(morphemes)
+  }
+  const response = await bg.annotateZh(text, { style: langSettings.zhStyle })
+  if (response.error) throw new Error(response.error)
+  return response.annotations ?? []
 }
 
 // --- DOM utilities ---
@@ -110,9 +153,9 @@ function collectTextNodes(root: Node): Text[] {
   const nodes: Text[] = []
   let skippedRuby = 0
   let skippedProcessed = 0
-  let skippedNoKanji = 0
+  let skippedNoCJK = 0
   let skippedOther = 0
-  
+
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node: Node): number {
       const parent = node.parentElement
@@ -135,8 +178,8 @@ function collectTextNodes(root: Node): Text[] {
         }
         return NodeFilter.FILTER_REJECT
       }
-      if (!node.textContent || !containsKanji(node.textContent)) {
-        skippedNoKanji++
+      if (!node.textContent || !containsCJK(node.textContent)) {
+        skippedNoCJK++
         return NodeFilter.FILTER_SKIP
       }
       return NodeFilter.FILTER_ACCEPT
@@ -150,103 +193,62 @@ function collectTextNodes(root: Node): Text[] {
     current = walker.nextNode()
   }
   console.log(`[yukari-rubi] Found ${nodes.length} text nodes to process`)
-  console.log(`[yukari-rubi] Skipped: ${skippedRuby} in ruby tags, ${skippedProcessed} already processed, ${skippedNoKanji} without kanji, ${skippedOther} other`)
+  console.log(
+    `[yukari-rubi] Skipped: ${skippedRuby} in ruby tags, ${skippedProcessed} already processed, ${skippedNoCJK} without CJK, ${skippedOther} other`,
+  )
   return nodes
-}
-
-// --- Font metrics utilities ---
-
-function getActualTextBounds(element: HTMLElement): {
-  fontAscent: number
-  actualAscent: number
-  fontSize: number
-} {
-  const style = window.getComputedStyle(element)
-  const fontSize = parseFloat(style.fontSize)
-
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
-  if (!ctx) {
-    return { fontAscent: fontSize * 0.8, actualAscent: fontSize * 0.7, fontSize }
-  }
-
-  ctx.font = `${style.fontStyle} ${style.fontWeight} ${fontSize}px ${style.fontFamily}`
-  const metrics = ctx.measureText('字')
-
-  return {
-    fontAscent: metrics.fontBoundingBoxAscent ?? fontSize * 0.8,
-    actualAscent: metrics.actualBoundingBoxAscent,
-    fontSize,
-  }
-}
-
-// --- Ruby element creation ---
-
-function createRubyFragment(
-  segments: readonly import("./lib/furigana").FuriganaSegment[],
-  parentElement: HTMLElement,
-): DocumentFragment {
-  const frag = document.createDocumentFragment()
-  
-  for (const seg of segments) {
-    if (seg.type === "kanji") {
-      const ruby = document.createElement("ruby")
-      
-      // Get ACTUAL rendered bounds of this specific kanji text
-      const { fontAscent, actualAscent, fontSize } = getActualTextBounds(parentElement)
-      const gap = fontAscent - actualAscent - fontSize * 0.1
-      ruby.style.setProperty('--ruby-adjustment', `${Math.max(gap, 0)}px`)
-      console.log(`[yukari-rubi] fontSize: ${fontSize}px, actualAscent: ${actualAscent.toFixed(1)}px, adjustment: ${gap.toFixed(1)}px`)
-      ruby.appendChild(document.createTextNode(seg.text))
-      const rt = document.createElement("rt")
-      rt.textContent = seg.reading
-      ruby.appendChild(rt)
-      frag.appendChild(ruby)
-    } else {
-      frag.appendChild(document.createTextNode(seg.text))
-    }
-  }
-  return frag
 }
 
 // --- Process a single text node ---
 
 async function processTextNode(textNode: Text): Promise<void> {
   const text = textNode.textContent
-  if (!text || !containsKanji(text)) return
+  if (!text || !containsCJK(text)) return
   if (!textNode.parentNode || !textNode.isConnected) return
 
-  console.log(`[yukari-rubi] Processing text node: "${text.substring(0, 50)}${text.length > 50 ? "..." : ""}"`)
-  const morphemes = await tokenize(text)
-  console.log(`[yukari-rubi] Tokenized into ${morphemes.length} morphemes`)
+  // Split into sentence-sized segments so a mixed-language text node
+  // (e.g. a Japanese sentence quoting a Chinese line) gets each part
+  // annotated by the right adapter.
+  const segments = detectLangSegments({
+    text,
+    node: textNode,
+    toggles: langSettings.toggles,
+    autoEnablePatterns: langSettings.autoEnablePatterns,
+    url: location.href,
+  })
+  if (segments.every((s) => s.lang === null)) return
+
+  const annotations: RubyAnnotation[] = []
+  for (const seg of segments) {
+    if (seg.lang === null) {
+      annotations.push({ type: "text", text: seg.text })
+      continue
+    }
+    try {
+      const segAnn = await annotateForLang(seg.text, seg.lang)
+      annotations.push(...segAnn)
+    } catch (err) {
+      console.warn(`[yukari-rubi] [${seg.lang}] annotation failed:`, err)
+      annotations.push({ type: "text", text: seg.text })
+    }
+  }
 
   // Re-check state and node after async call
   if (!active || !textNode.parentNode || !textNode.isConnected) return
+  if (annotations.length === 0) return
 
   const container = document.createElement("span")
   container.className = CONTAINER_CLASS
   container.setAttribute(PROCESSED_ATTR, text)
 
   const parent = textNode.parentElement || document.body
+  container.appendChild(createRubyFragmentFromAnnotations(annotations, parent))
 
-  for (const m of morphemes) {
-    if (m.verbatimReading && m.readingForm) {
-      const segments = [{ type: "kanji" as const, text: m.surface, reading: m.readingForm }]
-      container.appendChild(createRubyFragment(segments, parent))
-      continue
-    }
-    const segments = alignFurigana(m.surface, m.readingForm)
-    if (segments) {
-      container.appendChild(createRubyFragment(segments, parent))
-    } else {
-      container.appendChild(document.createTextNode(m.surface))
-    }
-  }
-
-  // Double check parent one last time before replacing
   if (textNode.parentNode) {
-    const parent = textNode.parentNode as Element
-    console.log(`[yukari-rubi] Replacing text node in <${parent.nodeName}> with ${morphemes.length} morphemes`)
+    const replacing = textNode.parentNode as Element
+    console.log(
+      `[yukari-rubi] Replacing text node in <${replacing.nodeName}> with ${annotations.length} annotations`,
+    )
     textNode.parentNode.replaceChild(container, textNode)
   } else {
     console.warn("[yukari-rubi] Text node lost parent before replacement")
@@ -285,39 +287,31 @@ function collectScrapboxTextElements(root: Node): HTMLElement[] {
   return out
 }
 
-function readScrapboxFullText(
-  textEl: HTMLElement,
-): { readonly charSpans: HTMLElement[]; readonly fullText: string } {
+function readScrapboxFullText(textEl: HTMLElement): {
+  readonly charSpans: HTMLElement[]
+  readonly fullText: string
+} {
   // Scrapbox sometimes wraps char-index spans in an intermediate <span>,
   // so use a descendant selector rather than direct children.
-  const charSpans = Array.from(
-    textEl.querySelectorAll<HTMLElement>(".char-index"),
-  )
+  const charSpans = Array.from(textEl.querySelectorAll<HTMLElement>(".char-index"))
   charSpans.sort((a, b) => {
     const ai = Number(a.dataset.charIndex ?? "0")
     const bi = Number(b.dataset.charIndex ?? "0")
     return ai - bi
   })
-  const fullText = charSpans
-    .map((s) => s.dataset.char ?? s.textContent ?? "")
-    .join("")
+  const fullText = charSpans.map((s) => s.dataset.char ?? s.textContent ?? "").join("")
   return { charSpans, fullText }
 }
 
 function unwrapScrapboxRubies(textEl: HTMLElement): void {
-  const rubies = textEl.querySelectorAll<HTMLElement>(
-    `ruby.${SCRAPBOX_RUBY_CLASS}`,
-  )
+  const rubies = textEl.querySelectorAll<HTMLElement>(`ruby.${SCRAPBOX_RUBY_CLASS}`)
   for (const ruby of rubies) {
     const parent = ruby.parentNode
     if (!parent) continue
     // Move the char-index spans back out in front of the ruby, then drop
     // the ruby (taking the <rt>/<rp> children with it).
     for (const child of Array.from(ruby.childNodes)) {
-      if (
-        child instanceof HTMLElement &&
-        child.classList.contains("char-index")
-      ) {
+      if (child instanceof HTMLElement && child.classList.contains("char-index")) {
         parent.insertBefore(child, ruby)
       }
     }
@@ -334,15 +328,34 @@ async function processScrapboxTextElement(textEl: HTMLElement): Promise<void> {
   if (textEl.getAttribute(SCRAPBOX_PROCESSED_ATTR) === fullText) return
   textEl.setAttribute(SCRAPBOX_PROCESSED_ATTR, fullText)
 
-  if (!containsKanji(fullText)) return
+  if (!containsCJK(fullText)) return
+
+  const segments = detectLangSegments({
+    text: fullText,
+    node: textEl,
+    toggles: langSettings.toggles,
+    autoEnablePatterns: langSettings.autoEnablePatterns,
+    url: location.href,
+  })
+  if (segments.every((s) => s.lang === null)) {
+    textEl.removeAttribute(SCRAPBOX_PROCESSED_ATTR)
+    return
+  }
 
   // Drop any stale rubies left over from a previous state of this line
-  // before tokenizing the current text.
+  // before re-annotating the current text.
   unwrapScrapboxRubies(textEl)
 
-  let morphemes: readonly Morpheme[]
+  const annotations: RubyAnnotation[] = []
   try {
-    morphemes = await tokenize(fullText)
+    for (const seg of segments) {
+      if (seg.lang === null) {
+        annotations.push({ type: "text", text: seg.text })
+        continue
+      }
+      const segAnn = await annotateForLang(seg.text, seg.lang)
+      annotations.push(...segAnn)
+    }
   } catch (e) {
     textEl.removeAttribute(SCRAPBOX_PROCESSED_ATTR)
     throw e
@@ -358,25 +371,17 @@ async function processScrapboxTextElement(textEl: HTMLElement): Promise<void> {
   }
 
   // Scrapbox creates one char-index span per JS string unit, so .length
-  // (UTF-16 units) lines up with char-index values directly.
+  // (UTF-16 units) lines up with char-index values directly. Walk the
+  // annotation list with a running position counter — ruby annotations
+  // wrap their span range, text annotations just advance the cursor.
   let pos = 0
-  for (const m of morphemes) {
-    if (m.verbatimReading && m.readingForm) {
-      wrapScrapboxRuby(charSpans, pos, m.surface.length, m.readingForm)
-      pos += m.surface.length
-      continue
+  for (const ann of annotations) {
+    if (ann.type === "ruby") {
+      wrapScrapboxRuby(charSpans, pos, ann.base.length, ann.rt, ann.script)
+      pos += ann.base.length
+    } else {
+      pos += ann.text.length
     }
-    const segments = alignFurigana(m.surface, m.readingForm)
-    if (segments) {
-      let segPos = pos
-      for (const seg of segments) {
-        if (seg.type === "kanji") {
-          wrapScrapboxRuby(charSpans, segPos, seg.text.length, seg.reading)
-        }
-        segPos += seg.text.length
-      }
-    }
-    pos += m.surface.length
   }
 }
 
@@ -385,6 +390,7 @@ function wrapScrapboxRuby(
   startIdx: number,
   length: number,
   reading: string,
+  script: "kana" | "pinyin" | "zhuyin" | undefined,
 ): void {
   const first = charSpans[startIdx]
   if (!first) return
@@ -401,6 +407,7 @@ function wrapScrapboxRuby(
 
   const ruby = document.createElement("ruby")
   ruby.className = SCRAPBOX_RUBY_CLASS
+  if (script) ruby.setAttribute("data-yukari-script", script)
   parent.insertBefore(ruby, first)
   for (let i = 0; i < length; i++) {
     const span = charSpans[startIdx + i]
@@ -409,7 +416,28 @@ function wrapScrapboxRuby(
   const rpOpen = document.createElement("rp")
   rpOpen.textContent = "("
   const rt = document.createElement("rt")
-  rt.textContent = reading
+  if (script) rt.setAttribute("data-yukari-script", script)
+  if (script === "zhuyin") {
+    const { letters, tone, neutral } = splitZhuyin(reading)
+    if (neutral) rt.setAttribute("data-yukari-zhuyin-tone", "neutral")
+    const sylSpan = document.createElement("span")
+    sylSpan.className = "yk-zh-syl"
+    sylSpan.textContent = letters
+    const toneSpan = document.createElement("span")
+    toneSpan.className = "yk-zh-tone"
+    toneSpan.textContent = tone
+    const letterCount = Array.from(letters).length
+    if (!neutral && tone) {
+      toneSpan.style.setProperty(
+        "--yk-zh-tone-offset",
+        `calc(${Math.max(0, letterCount - 1)}em - 0.35em)`,
+      )
+    }
+    rt.appendChild(sylSpan)
+    rt.appendChild(toneSpan)
+  } else {
+    rt.textContent = reading
+  }
   const rpClose = document.createElement("rp")
   rpClose.textContent = ")"
   ruby.appendChild(rpOpen)
@@ -436,16 +464,11 @@ async function processScrapboxRoot(root: Node): Promise<void> {
 }
 
 function removeScrapboxAnnotations(): void {
-  for (const ruby of document.querySelectorAll<HTMLElement>(
-    `ruby.${SCRAPBOX_RUBY_CLASS}`,
-  )) {
+  for (const ruby of document.querySelectorAll<HTMLElement>(`ruby.${SCRAPBOX_RUBY_CLASS}`)) {
     const parent = ruby.parentNode
     if (!parent) continue
     for (const child of Array.from(ruby.childNodes)) {
-      if (
-        child instanceof HTMLElement &&
-        child.classList.contains("char-index")
-      ) {
+      if (child instanceof HTMLElement && child.classList.contains("char-index")) {
         parent.insertBefore(child, ruby)
       }
     }
@@ -489,9 +512,7 @@ function startObserver(): void {
             if (node.closest(`ruby.${SCRAPBOX_RUBY_CLASS}`)) continue
             // Edits inside a line fire mutations on descendants of span.text;
             // walk up to the containing .text and reprocess it as a whole.
-            const nearestText = node.closest?.("span.text") as
-              | HTMLElement
-              | null
+            const nearestText = node.closest?.("span.text") as HTMLElement | null
             if (nearestText) {
               void processScrapboxTextElement(nearestText).catch((e) => {
                 if (e instanceof Error && e.message.includes("DeadObject")) return
@@ -503,7 +524,7 @@ function startObserver(): void {
           }
           if (node instanceof HTMLElement && !node.classList.contains(CONTAINER_CLASS)) {
             void processRoot(node)
-          } else if (node instanceof Text && node.textContent && containsKanji(node.textContent)) {
+          } else if (node instanceof Text && node.textContent && containsCJK(node.textContent)) {
             void processTextNode(node)
           }
         } catch (e) {
@@ -542,12 +563,21 @@ async function activate(): Promise<void> {
     // Ensure background script is ready before processing
     console.log("[yukari-rubi] Preloading background script...")
     await bg.preload()
-    console.log("[yukari-rubi] Processing document body...")
-    await processRoot(document.body)
     const settings = await bg.getSettings()
     console.log("[yukari-rubi] Settings:", settings)
+    langSettings = {
+      toggles: settings.languages ?? DEFAULT_LANGUAGES,
+      zhStyle: settings.zhStyle ?? DEFAULT_ZH_STYLE,
+      autoEnablePatterns: settings.autoEnablePatterns ?? [],
+    }
     const rubySize = settings.rubySize ?? 50
-    document.documentElement.style.setProperty('--yukari-ruby-size', String(rubySize))
+    document.documentElement.style.setProperty("--yukari-ruby-size", String(rubySize))
+    document.documentElement.setAttribute(
+      "data-yukari-zhuyin-pos",
+      settings.zhuyinPosition ?? "right",
+    )
+    console.log("[yukari-rubi] Processing document body...")
+    await processRoot(document.body)
     if (settings.mutationObserver) {
       console.log("[yukari-rubi] Starting mutation observer...")
       startObserver()
@@ -580,14 +610,42 @@ async function toggle(): Promise<void> {
   }
 }
 
-// --- Live update ruby size on storage change ---
+// --- Live update on storage change ---
 
 Browser.storage.onChanged.addListener((changes) => {
   if (changes.rubySize?.newValue !== undefined) {
-    document.documentElement.style.setProperty('--yukari-ruby-size', String(changes.rubySize.newValue))
+    document.documentElement.style.setProperty(
+      "--yukari-ruby-size",
+      String(changes.rubySize.newValue),
+    )
   }
   if ("shortcut" in changes) {
     currentShortcut = (changes.shortcut.newValue as Shortcut | null | undefined) ?? null
+  }
+  if ("languages" in changes) {
+    langSettings = {
+      ...langSettings,
+      toggles: (changes.languages.newValue as LanguageToggles | undefined) ?? DEFAULT_LANGUAGES,
+    }
+  }
+  if ("zhStyle" in changes) {
+    langSettings = {
+      ...langSettings,
+      zhStyle: (changes.zhStyle.newValue as ZhStyle | undefined) ?? DEFAULT_ZH_STYLE,
+    }
+  }
+  if ("zhuyinPosition" in changes) {
+    document.documentElement.setAttribute(
+      "data-yukari-zhuyin-pos",
+      (changes.zhuyinPosition.newValue as string | undefined) ?? "right",
+    )
+  }
+  if ("autoEnablePatterns" in changes) {
+    langSettings = {
+      ...langSettings,
+      autoEnablePatterns:
+        (changes.autoEnablePatterns.newValue as AutoEnableEntry[] | undefined) ?? [],
+    }
   }
 })
 
@@ -638,32 +696,35 @@ window.addEventListener(
 
 // --- Message listener ---
 
-Browser.runtime.onMessage.addListener((message: { type?: string; $birpc?: any }): Promise<unknown> | undefined => {
-  // Skip birpc messages (handled by birpc client)
-  if (message.$birpc) return undefined
+Browser.runtime.onMessage.addListener(
+  (message: { type?: string; $birpc?: any }): Promise<unknown> | undefined => {
+    // Skip birpc messages (handled by birpc client)
+    if (message.$birpc) return undefined
 
-  if (message.type === "toggle") {
-    void toggle()
+    if (message.type === "toggle") {
+      void toggle()
+      return undefined
+    }
+    if (message.type === "activate") {
+      if (!active) void activate()
+      return undefined
+    }
+    if (message.type === "deactivate") {
+      if (active) deactivate()
+      return undefined
+    }
+    if (message.type === "getStatus") {
+      return Promise.resolve({ active })
+    }
     return undefined
-  }
-  if (message.type === "activate") {
-    if (!active) void activate()
-    return undefined
-  }
-  if (message.type === "deactivate") {
-    if (active) deactivate()
-    return undefined
-  }
-  if (message.type === "getStatus") {
-    return Promise.resolve({ active })
-  }
-  return undefined
-})
+  },
+)
 
 // --- Auto-enable on matching URLs ---
 
 Browser.storage.local.get(["autoEnablePatterns"]).then((result) => {
-  const patterns: string[] = result.autoEnablePatterns ?? []
+  const entries = (result.autoEnablePatterns as AutoEnableEntry[] | undefined) ?? []
+  const patterns = patternsOf(entries)
   if (patterns.length > 0 && urlMatchesPatterns(location.href, patterns)) {
     console.log("[yukari-rubi] URL matches auto-enable pattern, activating...")
     void activate()
