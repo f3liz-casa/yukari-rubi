@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       :root {
         --c-bg: #fefefe;
@@ -341,6 +342,97 @@
         padding: 6px 8px;
         background: #fef2f2;
         border-radius: var(--radius-sm);
+      }
+
+      /* Touch (Firefox for Android, etc.) — same layout, bigger text and tap targets */
+      @media (pointer: coarse) {
+        /* Firefox for Android opens the popup as a full-screen page, not a
+           small anchored dropdown — fill the available width instead of
+           floating a fixed-width column in a sea of blank space. */
+        body {
+          width: 100%;
+          max-width: 480px;
+          padding: 20px;
+          font-size: 16px;
+        }
+        h1 {
+          font-size: 19px;
+        }
+        #status-text {
+          font-size: 16px;
+        }
+        #toggle-btn {
+          padding: 14px 16px;
+          font-size: 16px;
+        }
+        label {
+          font-size: 15px;
+          gap: 10px;
+          padding: 6px 0;
+        }
+        label input[type="checkbox"],
+        .zh-style input[type="radio"] {
+          width: 18px;
+          height: 18px;
+        }
+        .size-control span.label,
+        .size-control .size-value {
+          font-size: 15px;
+        }
+        .size-control button {
+          width: 40px;
+          height: 40px;
+          font-size: 20px;
+        }
+        .size-warning {
+          font-size: 13px;
+        }
+        .languages h2,
+        .auto-enable h2 {
+          font-size: 15px;
+        }
+        .languages label {
+          font-size: 15px;
+        }
+        .zh-style legend {
+          font-size: 13.5px;
+        }
+        .zh-style > fieldset > label {
+          font-size: 14.5px;
+        }
+        .zh-style-subchoices label {
+          font-size: 13.5px;
+        }
+        .auto-enable .add-site-btn {
+          padding: 10px 14px;
+          font-size: 14px;
+        }
+        .auto-enable input[type="text"] {
+          padding: 10px;
+          font-size: 14px;
+        }
+        .auto-enable .add-row button {
+          padding: 10px 14px;
+          font-size: 14px;
+        }
+        .pattern-item {
+          font-size: 13px;
+          padding: 8px 0;
+        }
+        .pattern-item button {
+          padding: 6px 10px;
+          font-size: 13px;
+        }
+        .pattern-hint {
+          font-size: 12px;
+        }
+        .open-settings button {
+          font-size: 14px;
+          padding: 8px 12px;
+        }
+        .error {
+          font-size: 14px;
+        }
       }
     </style>
   </head>
