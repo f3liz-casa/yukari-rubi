@@ -14,7 +14,7 @@
     "lint": "oxlint",
     "fmt": "oxfmt --write src/",
     "package": "npm run fetch-dict && npm run build && npx web-ext build --config web-ext.config.mjs --overwrite-dest && node scripts/make-source-archive.mjs",
-    "package:chrome": "npm run fetch-dict && npm run build:chrome && npx web-ext build --source-dir dist-chrome --artifacts-dir artifacts"
+    "package:chrome": "npm run fetch-dict && npm run build:chrome && npx web-ext build --source-dir dist-chrome --artifacts-dir artifacts --filename \"{name}-{version}-chrome.zip\" --overwrite-dest"
   },
   "dependencies": {
     "@f3liz/sudachi-wasm": "^0.1.7",
